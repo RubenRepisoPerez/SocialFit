@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "829538492901",
+    "project_id": "socialfit-c97d4",
+    "storage_bucket": "socialfit-c97d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:829538492901:android:6da78be598cc27efab8f0c",
+        "android_client_info": {
+          "package_name": "com.example.socialfit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQ6p0qsLXUvvFnTzNbalUr3b_JrRlfpFg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
