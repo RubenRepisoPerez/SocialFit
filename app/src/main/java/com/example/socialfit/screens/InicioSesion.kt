@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,22 +64,25 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api:: class)
 @Composable
 fun InicioSesion(navController: NavController){
+
+    // Colores
     val PurpleDark = Color(0xFF2D1B4E)      // Primario (Barras, Botón Principal)
     val PurpleMedium = Color(0xFF4A3175)    // Secundario (Bordes de inputs, Botones secundarios)
-    val AmberGold = Color(0xFFFFC107)       // Acento (Iconos, Checkbox, RadioButtons, Errores)
-    val BackgroundGrayBlue = Color(0xFFDDE1E7) // Fondo de la pantalla (Evita el blanco puro)
+    val AmberGold = Color(0xFFFFC107)       // (Iconos, Checkbox, RadioButtons, Errores)
+    val BackgroundGrayBlue = Color(0xFFDDE1E7) // Fondo de la pantalla
     val SurfaceWhite = Color(0xFFFFFFFF)       // Fondo de tarjetas o TextFields
 
     //BBDD Firebase
     val dbFirebase = Firebase.firestore
     val scope = rememberCoroutineScope()
 
+    // Variables de formularios
     var email by remember { mutableStateOf("") }
     var contrasena = rememberTextFieldState("")
     var passVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-
+    // Colocamos el fondo del inicio
     Image(
         painter = painterResource(R.drawable.fondo),
         contentDescription = null,
@@ -86,29 +90,32 @@ fun InicioSesion(navController: NavController){
         contentScale = ContentScale.FillBounds
     )
     Scaffold(
-        containerColor = BackgroundGrayBlue,
+
+        // Fondo transparente para ver la imagen
+        containerColor = Color.Transparent,
         // Cabecera de la pantalla
         topBar = {
-            TopAppBar(modifier = Modifier.height(60.dp),
+            CenterAlignedTopAppBar(modifier = Modifier.height(100.dp),
                 title = {
-                    Text(text = "Iniciar sesion", fontSize = 15.sp)
+                    Text(text = "Iniciar sesion", fontSize = 30.sp, color = Color.White, fontWeight = FontWeight.Bold)
                 },
                 colors = topAppBarColors(
                     containerColor = PurpleDark,
                     titleContentColor = Color.White)
             )
         }) { innerPadding ->
-        // Cuerpo de la pantalla
+
+        // Cuerpo de la pantalla apilado vertical
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center){
-            // Mensaje de Bienvenidabasico
+            // Mensaje de Bienvenida basico
             Text(text = "Bienvenid@",
                 fontSize = 30.sp,
                 color = PurpleDark,
                 fontWeight = FontWeight.Bold)
 
-            Spacer(modifier = Modifier.height(30.dp)) // Espacio para que no se vea todo tan pegado
+            Spacer(modifier = Modifier.height(30.dp)) // Espacio
 
             // Campo para rellenar el email
             OutlinedTextField(
@@ -119,10 +126,7 @@ fun InicioSesion(navController: NavController){
                     cursorColor = AmberGold              // La rayita de escribir es dorada
                 ),
                 value = email,
-                onValueChange = {
-                    if(it.length < 30){
-                        email = it
-                    } },
+                onValueChange = { email = it },
                 label = { Text("Email")},
                 modifier = Modifier.width(300.dp)
             )
@@ -156,15 +160,20 @@ fun InicioSesion(navController: NavController){
 
             Spacer(Modifier.size(15.dp)) // Espacio para separar el boton de aceptar
 
+            // Boton para recuperar contraseña
             TextButton(onClick = {
                 scope.launch {
+
+                    // Comprueba que el email no esta vacio
                     if(email.equals("")){
                         Toast.makeText(context,"Introduce un email",Toast.LENGTH_SHORT).show()
                     }else{
+                        // Comprueba si el correo ha sido verifiacado ya y actualiza su estado
                         val emVer = FirebaseTemplate.verificarYActualizarEstado(email)
 
+                        // Si el correo esta verificado...
                         if(emVer.isSuccess){
-                            FirebaseTemplate.enviarEmailCambioContrasena(email)
+                            FirebaseTemplate.enviarEmailCambioContrasena(email) // Podemos mandar el cambio de contraseña al email
                             Toast.makeText(context,"Email enviado al correo propuesto",Toast.LENGTH_SHORT).show()
                         } else{
                             Toast.makeText(context,"verifica el email primero, mira en spam",Toast.LENGTH_SHORT).show()
@@ -173,7 +182,7 @@ fun InicioSesion(navController: NavController){
                 }
             }
             ) {
-                Text("Quiero recuperar mi contraseña")
+                Text("Quiero recuperar mi contraseña", color = PurpleDark)
             }
 
             Spacer(Modifier.size(15.dp))
@@ -193,30 +202,31 @@ fun InicioSesion(navController: NavController){
 
 
                     // En la variable de la BDFirebase, de la coleccion usuario, para el documento email (el que hemos introducido) coger los campos
-                    // Esta puesto asi porque en Firebase todos los datos de un usuario se corresponden a un email
-                    dbFirebase.collection("usuario").document(email).get().addOnSuccessListener { usuario ->
-                        val usr = usuario.data
-                        if (usr != null) {
-                            val emailUsr = usr["email"] as? String
-                            val pwd = usr["password"] as? String
-                            if (emailUsr != null && pwd != null) {
-                                if (pwd == contrasena.text && usr["id"] != null) {
-                                    FirebaseTemplate.iniciarSesion(email.trim(), contrasena.toString().trim())
-                                    Toast.makeText(context,"Usuario inició sesión",Toast.LENGTH_SHORT).show()
+                    dbFirebase.collection("usuario")
+                        .whereEqualTo("email", email.trim())
+                        .get()
+                        .addOnSuccessListener { usuario ->
+                            // Si la consulta trae resultados, el usuario existe
+                            if (!usuario.isEmpty) {
+                                val documento = usuario.documents[0] // Cogemos el primer resultado
+                                val pwdEnBD = documento.getString("password")
 
+                                // Comparamos el texto real de la contraseña
+                                if (pwdEnBD == contrasena.text.toString()) {
+                                    // Aquí ya puedes iniciar sesión
+                                    FirebaseTemplate.iniciarSesion(email.trim(), contrasena.text.toString())
+                                    Toast.makeText(context, "Usuario inició sesión", Toast.LENGTH_SHORT).show()
+                                    FirebaseTemplate.iniciarSesion(email, contrasena.toString())
+                                    navController.navigate(route = AppScreens.Perfil.route + "/" + email)
                                 } else {
-                                    Toast.makeText(context,"Credenciales inválidas",Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Contraseña incorrecta", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
-                                Toast.makeText(context,"Datos del usuario incompletos",Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "El correo no está registrado", Toast.LENGTH_SHORT).show()
                             }
-                        } else {
-                            Toast.makeText(context, "Usuario no existe", Toast.LENGTH_SHORT).show()
-                        }
-                    }.addOnFailureListener { exception ->
+                        }.addOnFailureListener { exception ->
                         Log.e("FIRESTORE_ERROR", "Error: ${exception.message}")
                         Toast.makeText(context, "Error: ${exception.localizedMessage}", Toast.LENGTH_LONG).show()
-                        //Toast.makeText(context, "Error en la consulta", Toast.LENGTH_SHORT).show()
                     }
                 }
             }) {

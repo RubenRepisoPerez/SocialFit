@@ -1,6 +1,7 @@
 package com.example.socialfit
 
 import android.util.Log
+import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -127,7 +128,6 @@ object  FirebaseTemplate {
         }
     }
 
-
     suspend fun comprobarSiEmailExiste(email: String): Boolean {
         return try {
             // Hacemos una consulta buscando documentos donde el campo "email" sea igual al que recibimos
@@ -142,6 +142,42 @@ object  FirebaseTemplate {
             // Manejar el error (por ejemplo, falta de conexión)
             Log.e("FirestoreError", "Error al comprobar email", e)
             false
+        }
+    }
+
+    // Cambiamos el retorno a String? (opcional)
+    suspend fun obtenerIdConEmail(email: String) : String? {
+        return try {
+            val querySnapshot = db.collection("usuario")
+                .whereEqualTo("email", email.trim())
+                .get()
+                .await()
+
+            if (!querySnapshot.isEmpty) {
+                querySnapshot.documents[0].id // Retorna el ID si lo encuentra
+            } else {
+                null // Retorna nulo si el email no existe
+            }
+        } catch (e: Exception) {
+            Log.e("FIRESTORE", "Error: ${e.message}")
+            null // Retorna nulo si hay un error de conexión
+        }
+    }
+
+    suspend fun obtenerDescripcion(id: String): String? {
+        return try {
+            // Usamos await() para esperar la respuesta de forma segura
+            val document = db.collection("usuario").document(id).get().await()
+
+            if (document.exists()) {
+                // Extraemos el campo "descripcion"
+                document.getString("descripcion")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("FIRESTORE", "Error al obtener descripción: ${e.message}")
+            null
         }
     }
 
