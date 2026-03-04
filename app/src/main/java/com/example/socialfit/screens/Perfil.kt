@@ -3,6 +3,7 @@ package com.example.socialfit.screens
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,7 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -68,6 +72,7 @@ import com.composables.icons.lucide.UserRound
 import com.composables.icons.lucide.UserRoundPlus
 import com.composables.icons.lucide.X
 import com.example.socialfit.FirebaseTemplate
+import com.example.socialfit.R
 import com.example.socialfit.navigation.AppScreens
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
@@ -95,6 +100,9 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var siguiendo by remember { mutableStateOf(0)}
     var rutinaU by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
+    var altura by remember { mutableStateOf(0) }
+    var peso by remember { mutableStateOf(0) }
+    var sexo by remember { mutableStateOf("Desconocido") } // Nuevo estado para sexo
 
     // Lista rutinas
     var listaRutinas by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
@@ -124,6 +132,9 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         nick = document.getString("nick") ?: "Sin nick"
                         nombreU = document.getString("nombre") ?: "Sin nombre"
                         rutinaU = document.getString("rutina") ?: "Sin rutina"
+                        sexo = document.getString("sexo") ?: "Sin sexo"
+                        altura = document.getLong("altura")?.toInt() ?: 0
+                        peso = document.getLong("peso")?.toInt() ?: 0
                     }
                 }
         } else {
@@ -138,6 +149,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
     // Editores
     var editarDescripcion by remember { mutableStateOf(false) }
     var editarRutina by remember { mutableStateOf(false) }
+    var editarDatosFisicos by remember { mutableStateOf(false) }
 
     // Cada vez que se intente abrir el diálogo, refrescamos la lista de rutinas
     LaunchedEffect(editarRutina) {
@@ -171,7 +183,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
 
                 actions = {
                     IconButton(onClick = {
-                        //navController.popBackStack()
+                        navController.navigate(route = AppScreens.Ajustes.route + "/" + emailRecibido)
                         Toast.makeText(context, "Volver atrás", Toast.LENGTH_SHORT).show()
                     }
                     ) {
@@ -265,41 +277,50 @@ fun Perfil(navController: NavController, emailRecibido: String){
             }
         }) { innerPadding ->
 
-        Column(modifier = Modifier.padding(innerPadding)
+        Column(modifier = Modifier
+            .padding(innerPadding)
             .verticalScroll(scrollState)) {
 
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Icon(
                         modifier = Modifier.size(50.dp),
                         imageVector = Lucide.UserRound,
                         contentDescription = "Seguidores",
                         tint = PurpleMedium
                     )
-                    Text(text = seguidores.toString(),
+                    Text(
+                        text = seguidores.toString(),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = PurpleMedium
-                        )
+                    )
                     Text("Seguidores", color = PurpleMedium)
                 }
 
                 Spacer(Modifier.width(150.dp))
 
-                Column(Modifier.padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Icon(
                         modifier = Modifier.size(50.dp),
                         imageVector = Lucide.UserRoundPlus,
                         contentDescription = "Siguiendo",
                         tint = PurpleMedium
                     )
-                    Text(text = siguiendo.toString(),
+                    Text(
+                        text = siguiendo.toString(),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = PurpleMedium
@@ -345,10 +366,12 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            IconButton(onClick = {editarDescripcion = true},
+                            IconButton(
+                                onClick = { editarDescripcion = true },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .size(20.dp)) {
+                                    .size(20.dp)
+                            ) {
                                 Icon(
                                     imageVector = Lucide.Pen,
                                     contentDescription = "Editar descripcion"
@@ -411,8 +434,12 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                     OutlinedTextField(
                                         value = descripcionNueva,
                                         onValueChange = { descripcionNueva = it },
-                                        label = { Text("Nueva descripción",
-                                            color = Color.White) },
+                                        label = {
+                                            Text(
+                                                "Nueva descripción",
+                                                color = Color.White
+                                            )
+                                        },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedBorderColor = AmberGold,
@@ -439,10 +466,18 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                                         // Actualizamos el estado local para que se vea el cambio al instante
                                                         descripcion = descripcionNueva
                                                         editarDescripcion = false
-                                                        Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Perfil actualizado",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
                                                     }
                                                     .addOnFailureListener {
-                                                        Toast.makeText(context, "Error al actualizar", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Error al actualizar",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
                                                     }
                                             }
                                         }
@@ -462,10 +497,11 @@ fun Perfil(navController: NavController, emailRecibido: String){
                     .padding(horizontal = 16.dp, vertical = 10.dp), // Margen externo
                 shape = RoundedCornerShape(20.dp), // Puntas redondeadas
                 colors = CardDefaults.cardColors(containerColor = Color.White)
-            ){
-                Row(modifier = Modifier
-                    .padding(16.dp) // Espaciado interno
-                    .fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp) // Espaciado interno
+                        .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -474,14 +510,16 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         contentDescription = "Rutina",
                         tint = PurpleMedium
                     )
-                    Spacer( modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     Column() {
-                        Text(text = "Rutina",
+                        Text(
+                            text = "Rutina",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = PurpleMedium
                         )
-                        Text(text = rutinaU,
+                        Text(
+                            text = rutinaU,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = PurpleMedium
@@ -521,18 +559,22 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = PurpleMedium)
                     ) {
-                        Column(modifier = Modifier
-                            .padding(24.dp)
-                            .fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .fillMaxWidth()
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Seleccionar Rutina",
+                                Text(
+                                    "Seleccionar Rutina",
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White)
+                                    color = Color.White
+                                )
                                 IconButton(onClick = { editarRutina = false }) {
                                     Icon(
                                         Lucide.X, "Cerrar",
@@ -546,7 +588,8 @@ fun Perfil(navController: NavController, emailRecibido: String){
                             if (listaRutinas.isEmpty()) {
                                 Text(
                                     "Cargando rutinas disponibles...",
-                                    color = Color.White)
+                                    color = Color.White
+                                )
                             } else {
                                 LazyColumn {
                                     items(listaRutinas) { rutina ->
@@ -575,8 +618,16 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                             border = BorderStroke(1.dp, AmberGold)
                                         ) {
                                             Column(Modifier.padding(16.dp)) {
-                                                Text(nombre, fontWeight = FontWeight.Bold, color = AmberGold)
-                                                Text("Duración: $dias días", fontSize = 12.sp, color = AmberGold)
+                                                Text(
+                                                    nombre,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = AmberGold
+                                                )
+                                                Text(
+                                                    "Duración: $dias días",
+                                                    fontSize = 12.sp,
+                                                    color = AmberGold
+                                                )
                                             }
                                         }
                                     }
@@ -613,7 +664,12 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(text = "Días de la semana", fontSize = 14.sp, color = Color.Gray)
-                        Text(text = "Tiempo", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.padding(end = 40.dp))
+                        Text(
+                            text = "Tiempo",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(end = 40.dp)
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -638,28 +694,32 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                         .background(PurpleDark), // Cuadrado morado para el día
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = dia, color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = dia,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                if(dia == "L"){
+                                if (dia == "L") {
                                     diaLargo = "Lunes"
                                 }
-                                if(dia == "M"){
+                                if (dia == "M") {
                                     diaLargo = "Martes"
                                 }
-                                if(dia == "X"){
+                                if (dia == "X") {
                                     diaLargo = "Miercoles"
                                 }
-                                if(dia == "J"){
+                                if (dia == "J") {
                                     diaLargo = "Jueves"
                                 }
-                                if(dia == "V"){
+                                if (dia == "V") {
                                     diaLargo = "Viernes"
                                 }
-                                if(dia == "S"){
+                                if (dia == "S") {
                                     diaLargo = "Sabado"
                                 }
-                                if(dia == "D"){
+                                if (dia == "D") {
                                     diaLargo = "Domingo"
                                 }
                                 Text(text = diaLargo, fontSize = 16.sp, color = PurpleDark)
@@ -680,6 +740,149 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                         color = PurpleDark
                                     )
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp), // Margen externo para que no pegue a los bordes
+                shape = RoundedCornerShape(16.dp), // Puntas redondeadas como en la imagen
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Estadisticas musculares",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PurpleDark
+                        )
+
+                        IconButton(
+                            onClick = { editarDatosFisicos = true },
+                            modifier = Modifier
+                                .weight(1f)
+                                .size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Lucide.Pen,
+                                contentDescription = "Editar datos fisicos"
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Estadisticas basadas en datos: $sexo, $peso Kg, $altura cm",
+                        fontSize = 12.sp,
+                        color = PurpleMedium
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.musculosfrontales),
+                            contentDescription = "musculos frontales",
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.musculostraseros),
+                            contentDescription = "musculos frontales",
+                        )
+                    }
+                }
+            }
+
+            if (editarDatosFisicos) {
+                Dialog(onDismissRequest = { editarDatosFisicos = false }) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = PurpleMedium)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Cabecera
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Datos Físicos", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                IconButton(onClick = { editarDatosFisicos = false }) {
+                                    Icon(Lucide.X, "Cerrar", tint = Color.White)
+                                }
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // Altura
+                            OutlinedTextField(
+                                value = altura.toString(),
+                                onValueChange = { if (it.isEmpty()) altura = 0 else if (it.all { char -> char.isDigit() }) altura = it.toInt() },
+                                label = { Text("Altura (cm)", color = Color.White) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AmberGold,
+                                    unfocusedBorderColor = AmberGold,
+                                    focusedLabelColor = AmberGold,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            // Peso
+                            OutlinedTextField(
+                                value = peso.toString(),
+                                onValueChange = { if (it.isEmpty()) peso = 0 else if (it.all { char -> char.isDigit() }) peso = it.toInt() },
+                                label = { Text("Peso (kg)", color = Color.White) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AmberGold,
+                                    unfocusedBorderColor = AmberGold,
+                                    focusedLabelColor = AmberGold,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
+                            )
+
+                            Spacer(Modifier.height(24.dp))
+
+                            // Botón Actualizar
+                            Button(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = PurpleDark, contentColor = AmberGold),
+                                onClick = {
+                                    if (idUsuario.isNotEmpty()) {
+                                        val datos = mapOf("altura" to altura, "peso" to peso)
+                                        dbFirebase.collection("usuario").document(idUsuario)
+                                            .update(datos)
+                                            .addOnSuccessListener {
+                                                editarDatosFisicos = false
+                                                Toast.makeText(context, "Datos físicos actualizados", Toast.LENGTH_SHORT).show()
+                                            }
+                                    }
+                                }
+                            ) {
+                                Text("Actualizar datos físicos")
                             }
                         }
                     }

@@ -257,19 +257,16 @@ fun InicioSesion(navController: NavController){
 
                                 // Comparamos el texto real de la contraseña
                                 if (pwdEnBD == contrasena.text.toString()) {
-
-                                    // Logica de guardado en local
-                                    if (mantenerSesion) {
-                                        scope.launch {
-                                            withContext(Dispatchers.IO) {
-                                                dbLocal.sesionDao().borrarSesionAnterior()
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            dbLocal.sesionDao().borrarSesionAnterior()
+                                            if (mantenerSesion){
                                                 dbLocal.sesionDao().nuevaSesion(
                                                     SesionData(idUsuario = uidBD, emailUsuario = email.trim())
                                                 )
                                             }
                                         }
                                     }
-
                                     // Aquí ya puedes iniciar sesión
                                     FirebaseTemplate.iniciarSesion(email.trim(), contrasena.text.toString())
                                     Toast.makeText(context, "Usuario inició sesión", Toast.LENGTH_SHORT).show()
