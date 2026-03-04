@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,8 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,12 +54,17 @@ import androidx.room.Room
 import com.composables.icons.lucide.Eye
 import com.composables.icons.lucide.EyeOff
 import com.composables.icons.lucide.Lucide
+import com.example.socialfit.BDLocal.AppDB
+import com.example.socialfit.BDLocal.Estructura
+import com.example.socialfit.BDLocal.SesionData
 import com.example.socialfit.FirebaseTemplate
 import com.example.socialfit.R
 import com.example.socialfit.navigation.AppScreens
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -83,6 +91,12 @@ fun InicioSesion(navController: NavController){
     var passVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var idUsuario by remember { mutableStateOf("") }
+    var mantenerSesion by remember { mutableStateOf(false) }
+
+    // BBDD Local
+    val dbLocal = remember {
+        Room.databaseBuilder(context, AppDB::class.java, "SocialFitDB").build()
+    }
 
     // Colocamos el fondo del inicio
     Image(
@@ -108,7 +122,9 @@ fun InicioSesion(navController: NavController){
         }) { innerPadding ->
 
         // Cuerpo de la pantalla apilado vertical
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding),
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center){
             // Mensaje de Bienvenida basico
@@ -162,6 +178,25 @@ fun InicioSesion(navController: NavController){
 
             Spacer(Modifier.size(15.dp)) // Espacio para separar el boton de aceptar
 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.width(300.dp)
+            ) {
+                Checkbox(
+                    checked = mantenerSesion,
+                    onCheckedChange = { mantenerSesion = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = AmberGold,
+                        uncheckedColor = PurpleMedium,
+                        checkmarkColor = PurpleDark
+                )
+                )
+                Text("Mantener sesión iniciada",
+                    color = PurpleDark,
+                    fontSize = 14.sp
+                    )
+            }
+
             // Boton para recuperar contraseña
             TextButton(onClick = {
                 scope.launch {
@@ -209,8 +244,6 @@ fun InicioSesion(navController: NavController){
                     // Notificacion para avisar de que hay algo vacio
                     Toast.makeText(context,"No puede haber campos en blanco",Toast.LENGTH_SHORT).show()
                 }else {
-
-
                     // En la variable de la BDFirebase, de la coleccion usuario, para el documento email (el que hemos introducido) coger los campos
                     dbFirebase.collection("usuario")
                         .whereEqualTo("email", email.trim())
@@ -220,9 +253,23 @@ fun InicioSesion(navController: NavController){
                             if (!usuario.isEmpty) {
                                 val documento = usuario.documents[0] // Cogemos el primer resultado
                                 val pwdEnBD = documento.getString("password")
+                                val uidBD = documento.id
 
                                 // Comparamos el texto real de la contraseña
                                 if (pwdEnBD == contrasena.text.toString()) {
+
+                                    // Logica de guardado en local
+                                    if (mantenerSesion) {
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                dbLocal.sesionDao().borrarSesionAnterior()
+                                                dbLocal.sesionDao().nuevaSesion(
+                                                    SesionData(idUsuario = uidBD, emailUsuario = email.trim())
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     // Aquí ya puedes iniciar sesión
                                     FirebaseTemplate.iniciarSesion(email.trim(), contrasena.text.toString())
                                     Toast.makeText(context, "Usuario inició sesión", Toast.LENGTH_SHORT).show()

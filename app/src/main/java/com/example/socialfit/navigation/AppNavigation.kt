@@ -3,43 +3,82 @@ package com.example.socialfit.navigation
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.room.Room
+import com.example.socialfit.BDLocal.AppDB
 import com.example.socialfit.screens.InicioSesion
 import com.example.socialfit.screens.Perfil
 import com.example.socialfit.screens.PerfilAgeno
 import com.example.socialfit.screens.Registro
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 @Composable
 fun AppNavigation(){
 
     val context = LocalContext.current
-
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = AppScreens.InicioSesion.route) {
-        //NavHost(navController = navController, startDestination = if(estadoSesion == null)AppScreens.Inicio.route else AppScreens.Formulario.route){
-        composable (route = AppScreens.InicioSesion.route){
-            InicioSesion(navController)
+    
+    // Estado para controlar qué pantalla mostrar al principio
+    var rutaInicial by remember { mutableStateOf<String?>(null) }
+    var emailSesion by remember { mutableStateOf("") }
+
+    // BBDD Local Room para comprobar sesión
+    val dbLocal = remember {
+        Room.databaseBuilder(context, AppDB::class.java, "SocialFitDB").build()
+    }
+
+    LaunchedEffect(Unit) {
+        val sesion = withContext(Dispatchers.IO) {
+            dbLocal.sesionDao().getEstadoSesion()
         }
-        composable (route = AppScreens.Registro.route){
-            BackHandler(true) {
-                Toast.makeText(context, "Presionaste atrás, pero está restringido volver atrás", Toast.LENGTH_SHORT).show()
+
+        if (sesion != null) {
+            emailSesion = sesion.emailUsuario
+            rutaInicial = AppScreens.Perfil.route + "/${sesion.emailUsuario}"
+        } else {
+            rutaInicial = AppScreens.InicioSesion.route
+        }
+    }
+
+    // Solo mostramos el NavHost cuando ya sabemos a dónde ir
+    if (rutaInicial != null) {
+        NavHost(navController = navController, startDestination = rutaInicial!!) {
+            
+            composable(route = AppScreens.InicioSesion.route) {
+                InicioSesion(navController)
             }
-            Registro(navController)
-        }
-        composable (route = AppScreens.Perfil.route + "/{emailRecibido}",
-            arguments = listOf(navArgument(name = "emailRecibido"){
-                type = NavType.StringType
-            })){
-            Perfil(navController, it.arguments?.getString("emailRecibido").toString())
-        }
-        composable (route = AppScreens.PerfilAgeno.route){
-            PerfilAgeno(navController)
+            
+            composable(route = AppScreens.Registro.route) {
+                BackHandler(true) {
+                    Toast.makeText(context, "Presionaste atrás", Toast.LENGTH_SHORT).show()
+                }
+                Registro(navController)
+            }
+            
+            composable(
+                route = AppScreens.Perfil.route + "/{emailRecibido}",
+                arguments = listOf(navArgument(name = "emailRecibido") {
+                    type = NavType.StringType
+                })
+            ) { backStackEntry ->
+                Perfil(navController, backStackEntry.arguments?.getString("emailRecibido").toString())
+            }
+            
+            composable(route = AppScreens.PerfilAgeno.route) {
+                PerfilAgeno(navController)
+            }
         }
     }
 }
