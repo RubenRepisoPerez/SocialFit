@@ -96,7 +96,7 @@ object  FirebaseTemplate {
     }
 
     // 2. Comprueba el estado y actualiza Firestore si es necesario
-    suspend fun verificarYActualizarEstado(email: String?): Result<Boolean> {
+    suspend fun verificarYActualizarEstado(email: String?, idUsuario:String): Result<Boolean> {
         return try {
             val usuario = auth.currentUser ?: throw Exception("Sesión expirada")
 
@@ -106,7 +106,7 @@ object  FirebaseTemplate {
 
             if (verificado && !email?.isEmpty()!!) {
                 // Si está verificado, actualizamos su campo en Firestore
-                db.collection("usuario").document(email)
+                db.collection("usuario").document(idUsuario)
                     .update("verificado", true).await()
             }
 

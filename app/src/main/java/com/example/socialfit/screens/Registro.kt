@@ -289,14 +289,13 @@ fun Registro(navController: NavController) {
 
                                         // Guardar en Firestore (usamos el UID del usuario recién creado)
                                         val data = mapOf(
-                                            "nombre" to nick,
-                                            "apellidos" to nombre,
+                                            "nick" to nick,
+                                            "nombre" to nombre,
                                             "email" to email,
                                             "sexo" to sexo,
                                             "password" to contrasena.text,
                                             "verificado" to false // Inicialmente falso
                                         )
-                                        FirebaseTemplate.registrarUsuario(email, contrasena.toString())
                                         // Esto crea el usuario con un ID aleatorio automáticamente
                                         dbfire.collection("usuario").add(data).await()
 

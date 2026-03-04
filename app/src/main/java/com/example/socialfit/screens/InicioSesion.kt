@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +82,7 @@ fun InicioSesion(navController: NavController){
     var contrasena = rememberTextFieldState("")
     var passVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var idUsuario by remember { mutableStateOf("") }
 
     // Colocamos el fondo del inicio
     Image(
@@ -168,8 +170,16 @@ fun InicioSesion(navController: NavController){
                     if(email.equals("")){
                         Toast.makeText(context,"Introduce un email",Toast.LENGTH_SHORT).show()
                     }else{
+
+                        scope.launch {
+                            val idEncontrado = FirebaseTemplate.obtenerIdConEmail(email)
+                            if (idEncontrado != null) {
+                                idUsuario = idEncontrado
+                            }
+                        }
+
                         // Comprueba si el correo ha sido verifiacado ya y actualiza su estado
-                        val emVer = FirebaseTemplate.verificarYActualizarEstado(email)
+                        val emVer = FirebaseTemplate.verificarYActualizarEstado(email, idUsuario)
 
                         // Si el correo esta verificado...
                         if(emVer.isSuccess){
@@ -216,7 +226,6 @@ fun InicioSesion(navController: NavController){
                                     // Aquí ya puedes iniciar sesión
                                     FirebaseTemplate.iniciarSesion(email.trim(), contrasena.text.toString())
                                     Toast.makeText(context, "Usuario inició sesión", Toast.LENGTH_SHORT).show()
-                                    FirebaseTemplate.iniciarSesion(email, contrasena.toString())
                                     navController.navigate(route = AppScreens.Perfil.route + "/" + email)
                                 } else {
                                     Toast.makeText(context, "Contraseña incorrecta", Toast.LENGTH_SHORT).show()
@@ -235,8 +244,8 @@ fun InicioSesion(navController: NavController){
 
             Button(
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent, // Fondo morado oscuro
-                    contentColor = PurpleMedium  // Texto blanco
+                    containerColor = Color.Transparent,
+                    contentColor = PurpleMedium
                 ),
                 onClick = {
                 navController.navigate(route = AppScreens.Registro.route)
