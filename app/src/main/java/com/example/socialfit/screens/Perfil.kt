@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -53,6 +52,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -101,8 +102,24 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var rutinaU by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
     var altura by remember { mutableStateOf(0) }
-    var peso by remember { mutableStateOf(0) }
+    var peso by remember { mutableStateOf(0.0) } // Cambiado a Double
     var sexo by remember { mutableStateOf("Desconocido") } // Nuevo estado para sexo
+    var sexoBoolean by remember { mutableStateOf(true) }
+    var pesoTrapecio by remember { mutableStateOf(0.0) }
+    var pesoHombro by remember { mutableStateOf(0.0) }
+    var pesoRomboide by remember { mutableStateOf(0.0) }
+    var pesoEspaldaBaja by remember { mutableStateOf(0.0) }
+    var pesoTriceps by remember { mutableStateOf(0.0) }
+    var pesoAntebrazo by remember { mutableStateOf(0.0) }
+    var pesoGluteo by remember { mutableStateOf(0.0) }
+    var pesoAbdomen by remember { mutableStateOf(0.0) }
+    var pesoFemoral by remember { mutableStateOf(0.0) }
+    var pesoCuadriceps by remember { mutableStateOf(0.0) }
+    var pesoGemelo by remember { mutableStateOf(0.0) }
+    var pesoPecho by remember { mutableStateOf(0.0) }
+    var pesoBiceps by remember { mutableStateOf(0.0) }
+    var pesoAbductores by remember { mutableStateOf(0.0) }
+
 
     // Lista rutinas
     var listaRutinas by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
@@ -133,8 +150,14 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         nombreU = document.getString("nombre") ?: "Sin nombre"
                         rutinaU = document.getString("rutina") ?: "Sin rutina"
                         sexo = document.getString("sexo") ?: "Sin sexo"
+                        if(sexo == "Hombre") {
+                            sexoBoolean = true
+                        }
+                        if(sexo == "Mujer") {
+                            sexoBoolean = false
+                        }
                         altura = document.getLong("altura")?.toInt() ?: 0
-                        peso = document.getLong("peso")?.toInt() ?: 0
+                        peso = document.getDouble("peso") ?: 0.0 // Leemos como Double
                     }
                 }
         } else {
@@ -789,14 +812,169 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.musculosfrontales),
-                            contentDescription = "musculos frontales",
-                        )
-                        Image(
-                            painter = painterResource(id = R.drawable.musculostraseros),
-                            contentDescription = "musculos frontales",
-                        )
+                        Box(
+                            modifier = Modifier.background(Color.Transparent),
+                            contentAlignment = Alignment.TopCenter
+                        ){
+                            Image(
+                                painter = painterResource(id = R.drawable.musculosfrontales),
+                                contentDescription = "musculos frontales",
+                            )
+                            var colorHombro = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Deltoides", pesoHombro)
+                            Image(
+                                modifier = Modifier.padding(top = 47.dp),
+                                painter = painterResource(id = R.drawable.hobrodelante),
+                                contentDescription = "hombro",
+                                colorFilter = ColorFilter.tint(colorHombro)
+                            )
+                            var colorPecho = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Pecho", pesoPecho)
+                            Image(
+                                modifier = Modifier.padding(top = 47.dp),
+                                painter = painterResource(id = R.drawable.pecho),
+                                contentDescription = "pecho",
+                                colorFilter = ColorFilter.tint(colorPecho)
+                            )
+                            var colorBiceps = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Biceps", pesoBiceps)
+                            Image(
+                                modifier = Modifier.padding(top = 62.dp),
+                                painter = painterResource(id = R.drawable.biceps),
+                                contentDescription = "biceps",
+                                colorFilter = ColorFilter.tint(colorBiceps)
+                            )
+                            var colorAntebrazo = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Antebrazo", pesoAntebrazo)
+                            Image(
+                                modifier = Modifier.padding(top = 79.dp),
+                                painter = painterResource(id = R.drawable.antebrazodelante),
+                                contentDescription = "antebrazo",
+                                colorFilter = ColorFilter.tint(colorAntebrazo)
+                            )
+                            var colorAbdomen = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Abdomen", pesoAbdomen)
+                            Image(
+                                modifier = Modifier.padding(top = 65.dp),
+                                painter = painterResource(id = R.drawable.abdomendelante),
+                                contentDescription = "abdomen",
+                                colorFilter = ColorFilter.tint(colorAbdomen)
+                            )
+                            var colorAbductores = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Abductores", pesoAbductores)
+                            Image(
+                                modifier = Modifier.padding(top = 104.dp),
+                                painter = painterResource(id = R.drawable.abductores),
+                                contentDescription = "abductores",
+                                colorFilter = ColorFilter.tint(colorAbductores)
+                            )
+                            var colorCuadriceps = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Cuádriceps", pesoCuadriceps)
+                            Image(
+                                modifier = Modifier.padding(top = 106.dp),
+                                painter = painterResource(id = R.drawable.cuadricepsdelante),
+                                contentDescription = "cuadriceps",
+                                colorFilter = ColorFilter.tint(colorCuadriceps)
+                            )
+                            var colorGemelos = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Gemelo", pesoGemelo)
+                            Image(
+                                modifier = Modifier.padding(top = 161.dp),
+                                painter = painterResource(id = R.drawable.gemelosdelante),
+                                contentDescription = "gemelo",
+                                colorFilter = ColorFilter.tint(colorGemelos)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier.background(Color.Transparent).
+                            padding(top = 35.dp)
+                        ){
+                            Image(
+                                painterResource(id = R.drawable.barraavance),
+                                contentDescription = null
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier.background(Color.Transparent),
+                            contentAlignment = Alignment.TopCenter
+                        ){
+                            Image(
+                                painter = painterResource(id = R.drawable.musculostraseros),
+                                contentDescription = "musculos traseros",
+                            )
+                            var colorTrapecio = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Trapecio", pesoTrapecio)
+                            Image(
+                                modifier = Modifier.padding(top = 30.dp),
+                                painter = painterResource(id = R.drawable.trapecio),
+                                contentDescription = "trapecio",
+                                colorFilter = ColorFilter.tint(colorTrapecio)
+                            )
+                            var colorHombro = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Deltoides", pesoHombro)
+                            Image(
+                                modifier = Modifier.padding(top = 41.dp),
+                                painter = painterResource(id = R.drawable.hombrosdetras),
+                                contentDescription = "hombroDetras",
+                                colorFilter = ColorFilter.tint(colorHombro)
+                            )
+                            var colorRomboide = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Hombro Posterior", pesoRomboide)
+                            Image(
+                                modifier = Modifier.padding(top = 46.dp),
+                                painter = painterResource(id = R.drawable.romboides),
+                                contentDescription = "romboide",
+                                colorFilter = ColorFilter.tint(colorRomboide)
+                            )
+                            var colorTriceps = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Tríceps", pesoTriceps)
+                            Image(
+                                modifier = Modifier.padding(top = 52.dp),
+                                painter = painterResource(id = R.drawable.triceps),
+                                contentDescription = "triceps",
+                                colorFilter = ColorFilter.tint(colorTriceps)
+                            )
+                            var colorAntebrazo = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Antebrazo", pesoAntebrazo)
+                            Image(
+                                modifier = Modifier.padding(top = 71.dp),
+                                painter = painterResource(id = R.drawable.antebrazodetras),
+                                contentDescription = "triceps",
+                                colorFilter = ColorFilter.tint(colorAntebrazo)
+                            )
+                            var colorEspaldaBaja = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Espalda Baja", pesoEspaldaBaja)
+                            Image(
+                                modifier = Modifier.padding(top = 56.dp),
+                                painter = painterResource(id = R.drawable.espaldabaja),
+                                contentDescription = "espaldaBaja",
+                                colorFilter = ColorFilter.tint(colorEspaldaBaja)
+                            )
+                            var colorAbdomen = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Abdomen", pesoAbdomen)
+                            Image(
+                                modifier = Modifier.padding(top = 75.dp),
+                                painter = painterResource(id = R.drawable.abdomendetras),
+                                contentDescription = "abdomenDetras",
+                                colorFilter = ColorFilter.tint(colorAbdomen)
+                            )
+                            var colorGluteo = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Glúteo", pesoGluteo)
+                            Image(
+                                modifier = Modifier.padding(top = 91.dp),
+                                painter = painterResource(id = R.drawable.gluteo),
+                                contentDescription = "gluteo",
+                                colorFilter = ColorFilter.tint(colorGluteo)
+                            )
+                            var colorCuadriceps = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Cuádriceps", pesoCuadriceps)
+                            Image(
+                                modifier = Modifier.padding(top = 107.dp),
+                                painter = painterResource(id = R.drawable.cuadricepsdetras),
+                                contentDescription = "cuadricepsDetras",
+                                colorFilter = ColorFilter.tint(colorCuadriceps)
+                            )
+                            var colorFemoral = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Bíceps Femoral", pesoFemoral)
+                            Image(
+                                modifier = Modifier.padding(top = 117.dp),
+                                painter = painterResource(id = R.drawable.femoral),
+                                contentDescription = "femoral",
+                                colorFilter = ColorFilter.tint(colorFemoral)
+                            )
+                            var colorGemelos = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Gemelo", pesoGemelo)
+                            Image(
+                                modifier = Modifier.padding(top = 152.dp),
+                                painter = painterResource(id = R.drawable.gemelos),
+                                contentDescription = "gemelos",
+                                colorFilter = ColorFilter.tint(colorGemelos)
+                            )
+                        }
+
                     }
                 }
             }
@@ -849,11 +1027,20 @@ fun Perfil(navController: NavController, emailRecibido: String){
                             Spacer(Modifier.height(12.dp))
 
                             // Peso
+                            var pesoTexto by remember { mutableStateOf(peso.toString()) }
                             OutlinedTextField(
-                                value = peso.toString(),
-                                onValueChange = { if (it.isEmpty()) peso = 0 else if (it.all { char -> char.isDigit() }) peso = it.toInt() },
+                                value = pesoTexto,
+                                onValueChange = { 
+                                    if (it.isEmpty()) {
+                                        pesoTexto = ""
+                                        peso = 0.0
+                                    } else if (it.matches(Regex("^\\d*[.,]?\\d*$"))) {
+                                        pesoTexto = it.replace(',', '.')
+                                        peso = pesoTexto.toDoubleOrNull() ?: peso
+                                    }
+                                },
                                 label = { Text("Peso (kg)", color = Color.White) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AmberGold,
@@ -889,5 +1076,51 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 }
             }
         }
+    }
+}
+
+fun getColorMusculo(
+    peso: Double,
+    altura: Int,
+    esHombre: Boolean,
+    musculoSolicitado: String,
+    pesoLevantado: Double
+): Color {
+    val purpleDark = Color(0xFF2D1B4E)
+    val amberGold = Color(0xFFFFC107)
+
+    val factorGenero = if (esHombre) 1.0 else 0.65
+    val factorAltura = if (altura > 180) 1.0 - ((altura - 180) / 150.0) else 1.0
+    val fuerzaBase = peso * factorGenero * factorAltura
+
+    // Coeficientes actualizados
+    val coeficientes = mapOf(
+        "Trapecio" to 0.95,          // Remo en T
+        "Deltoides" to 0.14,         // Elevaciones Laterales
+        "Hombro Posterior" to 0.11,  // Pájaros
+        "Espalda Baja" to 1.25,      // Peso Muerto Rumano
+        "Cuádriceps" to 1.35,        // Sentadilla
+        "Bíceps Femoral" to 0.55,    // Curl Femoral
+        "Glúteo" to 1.60,            // Hip Thrust
+        "Gemelo" to 1.15,            // Elevación de talones
+        "Antebrazo" to 0.35,         // Curl de muñeca
+        "Tríceps" to 0.42,           // Extensiones polea
+        "Pecho" to 1.05,             // Press de Banca (Equilibrado)
+        "Bíceps" to 0.40,            // Curl de Bíceps (Barra/Mancuerna)
+        "Abductor" to 0.70           // Máquina de Abductores
+    )
+
+    val coeficiente = coeficientes[musculoSolicitado] ?: 1.0
+    val pesoEsperado = fuerzaBase * coeficiente
+
+    val ratio = if (pesoEsperado > 0) pesoLevantado / pesoEsperado else 0.0
+
+    return when {
+        pesoLevantado == 0.0 -> Color.Transparent
+        ratio < 0.70 -> purpleDark
+        ratio < 0.90 -> lerp(purpleDark, amberGold, 0.25f)
+        ratio <= 1.10 -> lerp(purpleDark, amberGold, 0.50f)
+        ratio <= 1.30 -> lerp(purpleDark, amberGold, 0.75f)
+        else -> amberGold
     }
 }
