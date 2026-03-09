@@ -2,6 +2,7 @@ package com.example.socialfit.screens
 
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,10 +41,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -76,7 +83,9 @@ import com.example.socialfit.FirebaseTemplate
 import com.example.socialfit.R
 import com.example.socialfit.navigation.AppScreens
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api:: class)
 @Composable
@@ -119,6 +128,36 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var pesoPecho by remember { mutableStateOf(0.0) }
     var pesoBiceps by remember { mutableStateOf(0.0) }
     var pesoAbductores by remember { mutableStateOf(0.0) }
+    val horariosSemana = remember { mutableStateMapOf<String, String>() }
+
+    // Estados para el TimePicker
+    var verHoraInicio by remember { mutableStateOf(false) }
+    var verHoraFinalizacion by remember { mutableStateOf(false) }
+    var diaSeleccionado by remember { mutableStateOf("") }
+
+    var tiempoInicio = rememberTimePickerState(is24Hour = true)
+    var tiempoFinalizacion = rememberTimePickerState(is24Hour = true)
+
+    // Cargar horarios desde Firebase al iniciar
+    LaunchedEffect(idUsuario) {
+        if (idUsuario.isNotEmpty()) {
+            dbFirebase.collection("usuario").document(idUsuario)
+                .get()
+                .addOnSuccessListener { document ->
+                    val horariosSubido = document.get("horarios") as? Map<String, String>
+                    horariosSubido?.forEach { (dia, hora) ->
+                        horariosSemana[dia] = hora
+                    }
+                }
+        }
+    }
+
+// Un mapa o estado para guardar los horarios de cada día (puedes inicializarlo con datos de Firebase luego)
+    val horariosDias = remember { mutableStateMapOf<String, String>().apply {
+        listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo").forEach {
+            put(it, "17:00 - 18:30") // Valor por defecto
+        }
+    }}
 
 
     // Lista rutinas
@@ -698,9 +737,17 @@ fun Perfil(navController: NavController, emailRecibido: String){
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Lista de días
-                    val dias = listOf("L", "M", "X", "J", "V", "S", "D")
-                    var diaLargo = ""
-                    dias.forEach { dia ->
+                    val diasMap = listOf(
+                        "L" to "Lunes",
+                        "M" to "Martes",
+                        "X" to "Miercoles",
+                        "J" to "Jueves",
+                        "V" to "Viernes",
+                        "S" to "Sabado",
+                        "D" to "Domingo"
+                    )
+
+                    diasMap.forEach { (letra, nombreDia) ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -708,57 +755,48 @@ fun Perfil(navController: NavController, emailRecibido: String){
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Parte izquierda: Icono morado y Letra del día
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
                                         .size(32.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(PurpleDark), // Cuadrado morado para el día
+                                        .background(PurpleDark),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = dia,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Text(text = letra, color = Color.White, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                if (dia == "L") {
-                                    diaLargo = "Lunes"
-                                }
-                                if (dia == "M") {
-                                    diaLargo = "Martes"
-                                }
-                                if (dia == "X") {
-                                    diaLargo = "Miercoles"
-                                }
-                                if (dia == "J") {
-                                    diaLargo = "Jueves"
-                                }
-                                if (dia == "V") {
-                                    diaLargo = "Viernes"
-                                }
-                                if (dia == "S") {
-                                    diaLargo = "Sabado"
-                                }
-                                if (dia == "D") {
-                                    diaLargo = "Domingo"
-                                }
-                                Text(text = diaLargo, fontSize = 16.sp, color = PurpleDark)
+                                Text(text = nombreDia, fontSize = 16.sp, color = PurpleDark)
                             }
 
                             Surface(
                                 modifier = Modifier
                                     .width(160.dp)
-                                    .height(36.dp),
+                                    .height(36.dp)
+                                    .clickable {
+                                        scope.launch {
+                                            tiempoInicio = TimePickerState(
+                                                initialHour = 0,
+                                                initialMinute = 0,
+                                                is24Hour = true
+                                            )
+                                            tiempoFinalizacion = TimePickerState(
+                                                initialHour = 0,
+                                                initialMinute = 0,
+                                                is24Hour = true
+                                            )
+
+                                            diaSeleccionado = nombreDia
+                                            verHoraInicio = true
+                                        }
+                                    },
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, PurpleDark),
                                 color = BackgroundGrayBlue
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
-                                        text = "17:00 - 18:30",
+                                        text = horariosSemana[nombreDia] ?: "Descanso",
                                         fontSize = 14.sp,
                                         color = PurpleDark
                                     )
@@ -766,6 +804,59 @@ fun Perfil(navController: NavController, emailRecibido: String){
                             }
                         }
                     }
+                }
+            }
+
+
+            tiempoInicio?.let { estadoActualInicio ->
+                if (verHoraInicio) {
+                    seleccionHorario(
+                        title = "Inicio - $diaSeleccionado",
+                        state = estadoActualInicio,
+                        onDismiss = { verHoraInicio = false },
+                        onConfirm = {
+                            tiempoFinalizacion = TimePickerState(
+                                initialHour = estadoActualInicio.hour,
+                                initialMinute = estadoActualInicio.minute,
+                                is24Hour = true
+                            )
+                            verHoraInicio = false
+                            verHoraFinalizacion = true
+                        }
+                    )
+                }
+            }
+
+            tiempoFinalizacion?.let { estadoActualFin ->
+                if (verHoraFinalizacion) {
+                    seleccionHorario(
+                        title = "Fin - $diaSeleccionado",
+                        state = estadoActualFin,
+                        onDismiss = { verHoraFinalizacion = false },
+                        onConfirm = {
+                            // Usamos !! porque dentro de este let sabemos que no son nulos
+                            val hInicio = String.format("%02d:%02d", tiempoInicio!!.hour, tiempoInicio!!.minute)
+                            val hFin = String.format("%02d:%02d", estadoActualFin.hour, estadoActualFin.minute)
+                            val horarioCompleto = "$hInicio - $hFin"
+
+                            horariosSemana[diaSeleccionado] = horarioCompleto
+                            verHoraFinalizacion = false
+
+                            // Guardado en Firebase
+                            if (idUsuario.isNotEmpty()) {
+                                dbFirebase.collection("usuario").document(idUsuario)
+                                    .update("horarios.$diaSeleccionado", horarioCompleto)
+                                    .addOnSuccessListener {
+                                        Toast.makeText(context, "Horario de $diaSeleccionado guardado", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .addOnFailureListener {
+                                        dbFirebase.collection("usuario").document(idUsuario)
+                                            .set(mapOf("horarios" to mapOf(diaSeleccionado to horarioCompleto)),
+                                                SetOptions.merge())
+                                    }
+                            }
+                        }
+                    )
                 }
             }
 
@@ -879,8 +970,9 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         }
 
                         Box(
-                            modifier = Modifier.background(Color.Transparent).
-                            padding(top = 35.dp)
+                            modifier = Modifier
+                                .background(Color.Transparent)
+                                .padding(top = 35.dp)
                         ){
                             Image(
                                 painterResource(id = R.drawable.barraavance),
@@ -974,8 +1066,11 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                 colorFilter = ColorFilter.tint(colorGemelos)
                             )
                         }
-
                     }
+                    Text("Añade marcas para ver tu nivel",
+                        fontSize = 12.sp,
+                        color = PurpleMedium
+                    )
                 }
             }
 
@@ -1075,6 +1170,24 @@ fun Perfil(navController: NavController, emailRecibido: String){
                     }
                 }
             }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Button(
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PurpleDark,
+                        contentColor = Color.White),
+                    onClick = {
+
+                    })
+                {
+                    Text("Añade marcas a los musculos")
+                }
+            }
         }
     }
 }
@@ -1122,5 +1235,55 @@ fun getColorMusculo(
         ratio <= 1.10 -> lerp(purpleDark, amberGold, 0.50f)
         ratio <= 1.30 -> lerp(purpleDark, amberGold, 0.75f)
         else -> amberGold
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun seleccionHorario(
+    title: String,
+    state: TimePickerState,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+
+    val PurpleDark = Color(0xFF2D1B4E)
+    val PurpleMedium = Color(0xFF4A3175)
+    val AmberGold = Color(0xFFFFC107)
+    val BackgroundGrayBlue = Color(0xFFDDE1E7)
+    val SurfaceWhite = Color(0xFFFFFFFF)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = PurpleDark)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TimePicker(
+                    state = state,
+                    colors = TimePickerDefaults.colors(
+                        selectorColor = AmberGold,
+                        clockDialColor = PurpleMedium,
+                        clockDialSelectedContentColor = PurpleDark,
+                        clockDialUnselectedContentColor = AmberGold,
+                        periodSelectorSelectedContainerColor = AmberGold
+                    )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancelar", color = Color.Gray) }
+                    TextButton(onClick = onConfirm) { Text("Aceptar", color = Color.White) }
+                }
+            }
+        }
     }
 }
