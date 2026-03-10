@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "829538492901",
-    "project_id": "socialfit-c97d4",
-    "storage_bucket": "socialfit-c97d4.firebasestorage.app"
+    "project_number": "307685110421",
+    "project_id": "socialfitv2-f5ea1",
+    "storage_bucket": "socialfitv2-f5ea1.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:829538492901:android:6da78be598cc27efab8f0c",
+        "mobilesdk_app_id": "1:307685110421:android:289ee7b585cd9196a5e19c",
         "android_client_info": {
           "package_name": "com.example.socialfit"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBQ6p0qsLXUvvFnTzNbalUr3b_JrRlfpFg"
+          "current_key": "AIzaSyArDK489WLE2UxqlRv2E1maRUp4XdEq4io"
         }
       ],
       "services": {

@@ -17,6 +17,7 @@ import androidx.navigation.navArgument
 import androidx.room.Room
 import com.example.socialfit.BDLocal.AppDB
 import com.example.socialfit.screens.Ajustes
+import com.example.socialfit.screens.AnadirMarcas
 import com.example.socialfit.screens.InicioSesion
 import com.example.socialfit.screens.Perfil
 import com.example.socialfit.screens.PerfilAgeno
@@ -88,6 +89,15 @@ fun AppNavigation(){
                 })
             ) { backStackEntry ->
                 Ajustes(navController, backStackEntry.arguments?.getString("emailRecibido").toString())
+            }
+
+            composable(
+                route = AppScreens.AnadirMarcas.route + "/{emailRecibido}",
+                arguments = listOf(navArgument(name = "emailRecibido") {
+                    type = NavType.StringType
+                })
+            ) { backStackEntry ->
+                AnadirMarcas(navController, backStackEntry.arguments?.getString("emailRecibido").toString())
             }
         }
     }

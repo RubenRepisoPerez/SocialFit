@@ -6,4 +6,5 @@ sealed class AppScreens (val route: String) {
     object Perfil: AppScreens("Perfil")
     object PerfilAgeno: AppScreens("PerfilAgeno")
     object Ajustes: AppScreens("Ajustes")
+    object AnadirMarcas: AppScreens("AnadirMarcas")
 }

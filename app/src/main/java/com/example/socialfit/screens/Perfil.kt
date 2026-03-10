@@ -1,7 +1,10 @@
 package com.example.socialfit.screens
 
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.composables.icons.lucide.CircleUserRound
 import com.composables.icons.lucide.Cog
 import com.composables.icons.lucide.Dumbbell
@@ -76,6 +83,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Pen
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.Text
+import com.composables.icons.lucide.User
 import com.composables.icons.lucide.UserRound
 import com.composables.icons.lucide.UserRoundPlus
 import com.composables.icons.lucide.X
@@ -85,6 +93,7 @@ import com.example.socialfit.navigation.AppScreens
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.storage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api:: class)
@@ -99,8 +108,10 @@ fun Perfil(navController: NavController, emailRecibido: String){
     val SurfaceWhite = Color(0xFFFFFFFF)       // Fondo de tarjetas o TextFields
 
     // BBDD Firebase
+    val storage = Firebase.storage
     val dbFirebase = Firebase.firestore
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var idUsuario by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
@@ -114,6 +125,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var peso by remember { mutableStateOf(0.0) } // Cambiado a Double
     var sexo by remember { mutableStateOf("Desconocido") } // Nuevo estado para sexo
     var sexoBoolean by remember { mutableStateOf(true) }
+
     var pesoTrapecio by remember { mutableStateOf(0.0) }
     var pesoHombro by remember { mutableStateOf(0.0) }
     var pesoRomboide by remember { mutableStateOf(0.0) }
@@ -128,7 +140,38 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var pesoPecho by remember { mutableStateOf(0.0) }
     var pesoBiceps by remember { mutableStateOf(0.0) }
     var pesoAbductores by remember { mutableStateOf(0.0) }
+
     val horariosSemana = remember { mutableStateMapOf<String, String>() }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var loadingImage by remember { mutableStateOf(false) }
+    val marcas = remember { mutableStateMapOf<String, Double>() }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            loadingImage = true
+            // Ruta en Storage: carpeta 'fotos_perfil' con el nombre del ID del usuario
+            val storageRef = storage.reference.child("fotos_perfil/$idUsuario.jpg")
+
+            storageRef.putFile(uri)
+                .addOnSuccessListener {
+                    storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                        // Guardamos el LINK de la imagen en el documento del usuario en Firestore
+                        dbFirebase.collection("usuario").document(idUsuario)
+                            .update("fotoPerfil", downloadUrl.toString())
+                            .addOnSuccessListener {
+                                imageUri = downloadUrl // Actualizamos la vista
+                                loadingImage = false
+                            }
+                    }
+                }
+                .addOnFailureListener {
+                    loadingImage = false
+                    Toast.makeText(context, "Error al subir imagen", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
 
     // Estados para el TimePicker
     var verHoraInicio by remember { mutableStateOf(false) }
@@ -182,21 +225,54 @@ fun Perfil(navController: NavController, emailRecibido: String){
             // Buscamos los datos del perfil
             dbFirebase.collection("usuario").document(idEncontrado).get()
                 .addOnSuccessListener { document ->
-                    if (document != null) {
+                    if (document != null && document.exists()) {
                         descripcion = document.getString("descripcion") ?: "Sin descripción"
-                        // seguidores = document.getLong("seguidores")?.toInt() ?: 0
                         nick = document.getString("nick") ?: "Sin nick"
                         nombreU = document.getString("nombre") ?: "Sin nombre"
                         rutinaU = document.getString("rutina") ?: "Sin rutina"
                         sexo = document.getString("sexo") ?: "Sin sexo"
-                        if(sexo == "Hombre") {
-                            sexoBoolean = true
-                        }
-                        if(sexo == "Mujer") {
-                            sexoBoolean = false
-                        }
+
+                        sexoBoolean = (sexo == "Hombre")
+
                         altura = document.getLong("altura")?.toInt() ?: 0
-                        peso = document.getDouble("peso") ?: 0.0 // Leemos como Double
+                        peso = document.getDouble("peso") ?: 0.0
+
+                        val fotoUrl = document.getString("fotoPerfil")
+                        if (!fotoUrl.isNullOrEmpty()) {
+                            imageUri = Uri.parse(fotoUrl)
+                        }
+
+                        val marcasMap = document.get("marcas") as? Map<String, Any>
+
+                        fun obtenerPeso(nombreMusculo: String): Double {
+                            val valor = marcasMap?.get(nombreMusculo)
+                            return when (valor) {
+                                is Number -> valor.toDouble()
+                                else -> 0.0
+                            }
+                        }
+
+                        pesoPecho = obtenerPeso("Pecho")
+                        pesoBiceps = obtenerPeso("Bíceps")
+                        pesoTriceps = obtenerPeso("Triceps")
+                        pesoHombro = obtenerPeso("Deltoide")
+                        pesoTrapecio = obtenerPeso("Trapecio")
+                        pesoCuadriceps = obtenerPeso("Cuadriceps")
+                        pesoEspaldaBaja = obtenerPeso("Espalda Baja")
+                        pesoAbdomen = obtenerPeso("Abdomen")
+                        pesoAntebrazo = obtenerPeso("Antebrazo")
+                        pesoRomboide = obtenerPeso("Hombro Posterior")
+                        pesoGluteo = obtenerPeso("Glúteo")
+                        pesoFemoral = obtenerPeso("Bíceps Femoral")
+                        pesoAbductores = obtenerPeso("Abductor")
+                        pesoGemelo = obtenerPeso("Gemelo")
+
+
+                        // Si también quieres llenar el mapa 'marcas' que tenías:
+                        val nombresMusculos = listOf("Pecho", "Biceps", "Triceps", "Hombros", "Piernas", "Espalda", "Abdomen")
+                        nombresMusculos.forEach { musculo ->
+                            marcas[musculo] = obtenerPeso(musculo)
+                        }
                     }
                 }
         } else {
@@ -204,7 +280,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
         }
     }
 
-    val context = LocalContext.current
+
     var descripcionNueva by remember { mutableStateOf("") }
 
 
@@ -408,13 +484,31 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 ) {
                     // Espacio para la foto de perfil
                     Surface(
-                        modifier = Modifier.size(80.dp), // Tamaño del círculo
+                        modifier = Modifier.size(80.dp) // Tamaño del círculo
+                            .clickable { galleryLauncher.launch("image/*") },
                         shape = CircleShape,
                         border = BorderStroke(2.dp, AmberGold), // El anillo dorado
                         color = Color.LightGray // Fondo mientras no hay foto
                     ) {
-                        // Aquí iría tu Image(...)
-                        // Image(painter = ..., contentDescription = "Foto de perfil", contentScale = ContentScale.Crop)
+                        Box(contentAlignment = Alignment.Center) {
+                            if (loadingImage) {
+                                CircularProgressIndicator(color = AmberGold, modifier = Modifier.size(30.dp))
+                            } else if (imageUri != null) {
+                                AsyncImage(
+                                    model = imageUri,
+                                    contentDescription = "Foto de perfil",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Lucide.User,
+                                    contentDescription = "Seleccionar foto",
+                                    modifier = Modifier.size(50.dp),
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(16.dp)) // Espacio entre foto y texto
@@ -424,7 +518,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text(
                                 text = nick,
-                                color = PurpleDark, // Color temático,
+                                color = PurpleDark,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1182,9 +1276,9 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         containerColor = PurpleDark,
                         contentColor = Color.White),
                     onClick = {
-
-                    })
-                {
+                        navController.navigate(route = AppScreens.AnadirMarcas.route + "/" + emailRecibido)
+                    }
+                ){
                     Text("Añade marcas a los musculos")
                 }
             }
@@ -1218,8 +1312,8 @@ fun getColorMusculo(
         "Gemelo" to 1.15,            // Elevación de talones
         "Antebrazo" to 0.35,         // Curl de muñeca
         "Tríceps" to 0.42,           // Extensiones polea
-        "Pecho" to 1.05,             // Press de Banca (Equilibrado)
-        "Bíceps" to 0.40,            // Curl de Bíceps (Barra/Mancuerna)
+        "Pecho" to 1.05,             // Press de Banca
+        "Bíceps" to 0.40,            // Curl de Bíceps
         "Abductor" to 0.70           // Máquina de Abductores
     )
 
@@ -1230,10 +1324,10 @@ fun getColorMusculo(
 
     return when {
         pesoLevantado == 0.0 -> Color.Transparent
-        ratio < 0.70 -> purpleDark
+        ratio < 0.60 -> purpleDark
         ratio < 0.90 -> lerp(purpleDark, amberGold, 0.25f)
-        ratio <= 1.10 -> lerp(purpleDark, amberGold, 0.50f)
-        ratio <= 1.30 -> lerp(purpleDark, amberGold, 0.75f)
+        ratio <= 1.20 -> lerp(purpleDark, amberGold, 0.50f)
+        ratio <= 1.45 -> lerp(purpleDark, amberGold, 0.75f)
         else -> amberGold
     }
 }
