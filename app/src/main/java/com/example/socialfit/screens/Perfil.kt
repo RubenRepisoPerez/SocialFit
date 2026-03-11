@@ -358,7 +358,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 NavigationBarItem(
                     selected = false,
                     onClick = {
-                        //navController.navigate(route = AppScreens.Mensajes.route)
+                        navController.navigate(route = AppScreens.BandejaMensajes.route + "/" + emailRecibido)
                     },
                     icon = {
                         Icon(
@@ -377,7 +377,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 NavigationBarItem(
                     selected = false,
                     onClick = {
-                        //navController.navigate(route = AppScreens.Productos.route + "/" + emailRecibido)
+                        navController.navigate(route = AppScreens.Buscar.route + "/" + emailRecibido)
                     },
                     icon = {
                         Icon(
@@ -394,22 +394,24 @@ fun Perfil(navController: NavController, emailRecibido: String){
                     )
                 )
                 NavigationBarItem(
-                    selected = false,
+                    selected = true,
                     onClick = {
-                        //navController.navigate(route = AppScreens.Resultados.route + "/" + emailRecibido)
+                        //navController.navigate(route = AppScreens.Perfil.route + "/" + emailRecibido)
                     },
                     icon = {
                         Icon(
-                            Lucide.CircleUserRound, contentDescription = "Ir al perfil de usuario"
+                            Lucide.CircleUserRound,
+                            contentDescription = "Perfil",
+                            tint = if (true) PurpleDark else AmberGold // Opcional: Icono oscuro sobre fondo claro
                         )
                     },
                     label = { Text("Perfil") },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = AmberGold,   // Icono seleccionado en Dorado
-                        selectedTextColor = AmberGold,   // Texto seleccionado en Dorado
+                        selectedIconColor = PurpleDark,      // Icono oscuro para que resalte sobre el óvalo dorado
+                        selectedTextColor = AmberGold,       // Texto en dorado
+                        indicatorColor = AmberGold,          // ¡EL ÓVALO! Ahora en Dorado para que destaque
                         unselectedIconColor = AmberGold,
-                        unselectedTextColor = AmberGold,
-                        indicatorColor = PurpleMedium     // El "óvalo" detrás del icono seleccionado
+                        unselectedTextColor = AmberGold
                     )
                 )
             }
@@ -1019,7 +1021,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                                 contentDescription = "pecho",
                                 colorFilter = ColorFilter.tint(colorPecho)
                             )
-                            var colorBiceps = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Biceps", pesoBiceps)
+                            var colorBiceps = getColorMusculo(peso.toDouble(), altura, sexoBoolean, "Bíceps", pesoBiceps)
                             Image(
                                 modifier = Modifier.padding(top = 62.dp),
                                 painter = painterResource(id = R.drawable.biceps),
@@ -1296,25 +1298,26 @@ fun getColorMusculo(
     val purpleDark = Color(0xFF2D1B4E)
     val amberGold = Color(0xFFFFC107)
 
+    // Lógica de fuerza base ajustada por morfología
     val factorGenero = if (esHombre) 1.0 else 0.65
     val factorAltura = if (altura > 180) 1.0 - ((altura - 180) / 150.0) else 1.0
     val fuerzaBase = peso * factorGenero * factorAltura
 
-    // Coeficientes actualizados
     val coeficientes = mapOf(
-        "Trapecio" to 0.95,          // Remo en T
-        "Deltoides" to 0.14,         // Elevaciones Laterales
+        "Trapecio" to 0.90,          // Remo en T (Máquina)
+        "Deltoides" to 0.15,         // Elevaciones Laterales (Polea)
         "Hombro Posterior" to 0.11,  // Pájaros
-        "Espalda Baja" to 1.25,      // Peso Muerto Rumano
+        "Espalda Baja" to 1.10,      // Peso Muerto RDL (Suma de 2 mancuernas)
         "Cuádriceps" to 1.35,        // Sentadilla
         "Bíceps Femoral" to 0.55,    // Curl Femoral
         "Glúteo" to 1.60,            // Hip Thrust
         "Gemelo" to 1.15,            // Elevación de talones
         "Antebrazo" to 0.35,         // Curl de muñeca
         "Tríceps" to 0.42,           // Extensiones polea
-        "Pecho" to 1.05,             // Press de Banca
-        "Bíceps" to 0.40,            // Curl de Bíceps
-        "Abductor" to 0.70           // Máquina de Abductores
+        "Pecho" to 1.05,             // Press de Banca (Barra completa)
+        "Bíceps" to 0.2,             // Curl Unilateral (Peso de 1 mancuerna)
+        "Abductor" to 0.70,          // Máquina de Abductores
+        "Abdomen" to 0.58            // Crunch en Polea Alta
     )
 
     val coeficiente = coeficientes[musculoSolicitado] ?: 1.0
@@ -1324,11 +1327,13 @@ fun getColorMusculo(
 
     return when {
         pesoLevantado == 0.0 -> Color.Transparent
-        ratio < 0.60 -> purpleDark
-        ratio < 0.90 -> lerp(purpleDark, amberGold, 0.25f)
-        ratio <= 1.20 -> lerp(purpleDark, amberGold, 0.50f)
-        ratio <= 1.45 -> lerp(purpleDark, amberGold, 0.75f)
-        else -> amberGold
+        ratio < 0.50 -> purpleDark                             // Nivel 1: Iniciación
+        ratio < 0.70 -> lerp(purpleDark, amberGold, 0.16f)    // Nivel 2: Principiante
+        ratio < 0.90 -> lerp(purpleDark, amberGold, 0.33f)    // Nivel 3: Novato+
+        ratio < 1.10 -> lerp(purpleDark, amberGold, 0.50f)    // Nivel 4: Intermedio (Punto medio)
+        ratio < 1.30 -> lerp(purpleDark, amberGold, 0.66f)    // Nivel 5: Intermedio+
+        ratio < 1.50 -> lerp(purpleDark, amberGold, 0.83f)    // Nivel 6: Avanzado
+        else         -> amberGold                             // Nivel 7: Élite / Dorado
     }
 }
 
