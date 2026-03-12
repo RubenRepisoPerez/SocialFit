@@ -55,6 +55,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -117,8 +118,8 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var descripcion by remember { mutableStateOf("") }
     var nick by remember { mutableStateOf("") }
     var nombreU by remember { mutableStateOf("") }
-    var seguidores by remember { mutableStateOf(0) }
-    var siguiendo by remember { mutableStateOf(0)}
+    var seguidores by remember { mutableIntStateOf(0) }
+    var siguiendo by remember { mutableIntStateOf(0) }
     var rutinaU by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
     var altura by remember { mutableStateOf(0) }
@@ -145,6 +146,26 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var loadingImage by remember { mutableStateOf(false) }
     val marcas = remember { mutableStateMapOf<String, Double>() }
+
+    LaunchedEffect(emailRecibido) {
+        if (emailRecibido.isNotEmpty()) {
+            val listenerSeguidores = dbFirebase.collection("seguimientos")
+                .whereEqualTo("seguido", emailRecibido)
+                .addSnapshotListener { snapshot, error ->
+                    if (error == null && snapshot != null) {
+                        seguidores = snapshot.size()
+                    }
+                }
+
+            val listenerSiguiendo = dbFirebase.collection("seguimientos")
+                .whereEqualTo("seguidor", emailRecibido)
+                .addSnapshotListener { snapshot, error ->
+                    if (error == null && snapshot != null) {
+                        siguiendo = snapshot.size()
+                    }
+                }
+        }
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -486,7 +507,8 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 ) {
                     // Espacio para la foto de perfil
                     Surface(
-                        modifier = Modifier.size(80.dp) // Tamaño del círculo
+                        modifier = Modifier
+                            .size(80.dp) // Tamaño del círculo
                             .clickable { galleryLauncher.launch("image/*") },
                         shape = CircleShape,
                         border = BorderStroke(2.dp, AmberGold), // El anillo dorado

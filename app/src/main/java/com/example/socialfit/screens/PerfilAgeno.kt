@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.isEmpty
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
@@ -22,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.size
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -54,6 +57,7 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
     var peso by remember { mutableStateOf(0.0) }
     var sexo by remember { mutableStateOf("Desconocido") }
     var sexoBoolean by remember { mutableStateOf(true) }
+    var yaLoSigue by remember { mutableStateOf(false) }
 
     var pesoTrapecio by remember { mutableStateOf(0.0) }
     var pesoHombro by remember { mutableStateOf(0.0) }
@@ -70,6 +74,29 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
     var pesoBiceps by remember { mutableStateOf(0.0) }
     var pesoAbductores by remember { mutableStateOf(0.0) }
     val marcas = remember { mutableStateMapOf<String, Double>() }
+
+    LaunchedEffect(emailLocal, emailVisita) {
+        dbFirebase.collection("seguimientos")
+            .whereEqualTo("seguidor", emailLocal)
+            .whereEqualTo("seguido", emailVisita)
+            .get()
+            .addOnSuccessListener { documents ->
+                yaLoSigue = !documents.isEmpty
+            }
+        dbFirebase.collection("seguimientos")
+            .whereEqualTo("seguido", emailVisita)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                seguidores = snapshot.size()
+            }
+
+        dbFirebase.collection("seguimientos")
+            .whereEqualTo("seguidor", emailVisita)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                siguiendo = snapshot.size()
+            }
+    }
 
     LaunchedEffect(emailVisita) {
         dbFirebase.collection("usuario")
@@ -199,14 +226,44 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { /* Lógica de seguir usando emailLocal y emailVisita */ },
+                    onClick = {
+                        if (yaLoSigue) {
+                            dbFirebase.collection("seguimientos")
+                                .whereEqualTo("seguidor", emailLocal)
+                                .whereEqualTo("seguido", emailVisita)
+                                .get()
+                                .addOnSuccessListener { result ->
+                                    for (doc in result) {
+                                        dbFirebase.collection("seguimientos").document(doc.id).delete()
+                                    }
+                                    yaLoSigue = false
+                                }
+                        } else {
+                            val nuevoSeguimiento = hashMapOf(
+                                "seguidor" to emailLocal,
+                                "seguido" to emailVisita,
+                                "fecha" to com.google.firebase.Timestamp.now()
+                            )
+
+                            dbFirebase.collection("seguimientos").add(nuevoSeguimiento)
+                                .addOnSuccessListener {
+                                    yaLoSigue = true
+                                }
+                        }
+                    },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = PurpleDark),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (yaLoSigue) Color.Gray else PurpleDark
+                    ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(Lucide.UserPlus, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = if (yaLoSigue) Lucide.UserCheck else Lucide.UserPlus,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Seguir")
+                    Text(if (yaLoSigue) "Siguiendo" else "Seguir")
                 }
 
                 Button(
@@ -224,66 +281,90 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("Rutina Semanal", fontWeight = FontWeight.Bold, color = PurpleDark, fontSize = 18.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Lucide.Dumbbell, contentDescription = null, tint = PurpleDark, modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Rutina Actual", fontWeight = FontWeight.ExtraBold, color = PurpleDark, fontSize = 18.sp)
+            }
+
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(4.dp)
             ) {
-                Text(
-                    text = rutinaU,
-                    modifier = Modifier.padding(16.dp),
-                    color = PurpleDark,
-                    fontSize = 15.sp
-                )
+                IntrinsicSize.Min
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    // Barra lateral decorativa
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(6.dp)
+                            .background(
+                                Brush.verticalGradient(listOf(AmberGold, PurpleMedium))
+                            )
+                    )
+
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Lucide.ClipboardList, contentDescription = null, tint = PurpleMedium, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "PLAN SEMANAL",
+                                color = PurpleMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                letterSpacing = 1.2.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = rutinaU,
+                            color = PurpleDark,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Horarios de Entrenamiento", fontWeight = FontWeight.Bold, color = PurpleDark, fontSize = 18.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Lucide.CalendarDays, contentDescription = null, tint = PurpleDark, modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Horarios de Entrenamiento", fontWeight = FontWeight.ExtraBold, color = PurpleDark, fontSize = 18.sp)
+            }
+
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    val diasMap = listOf(
-                        "L" to "Lunes",
-                        "M" to "Martes",
-                        "X" to "Miercoles",
-                        "J" to "Jueves",
-                        "V" to "Viernes",
-                        "S" to "Sabado",
-                        "D" to "Domingo"
-                    )
-
-                    diasMap.forEach { (letra, diaLargo) ->
+                    val diasMap = listOf("L" to "Lunes", "M" to "Martes", "X" to "Miercoles", "J" to "Jueves", "V" to "Viernes", "S" to "Sabado", "D" to "Domingo")
+                    diasMap.forEach { (letra, dia) ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(PurpleDark),
+                                    modifier = Modifier.size(30.dp).clip(RoundedCornerShape(6.dp)).background(PurpleDark),
                                     contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = letra, color = Color.White, fontWeight = FontWeight.Bold)
-                                }
+                                ) { Text(letra, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(text = diaLargo, fontSize = 16.sp, color = PurpleDark)
+                                Text(dia, color = PurpleDark, fontWeight = FontWeight.Medium)
                             }
-
                             Text(
-                                text = horariosSemana[diaLargo] ?: "No entrena",
-                                color = if (horariosSemana.containsKey(diaLargo)) AmberGold else Color.Gray,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                text = horariosSemana[dia] ?: "No entrena",
+                                color = if (horariosSemana.containsKey(dia)) AmberGold else Color.Gray,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -292,7 +373,11 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("Estadísticas de Fuerza", fontWeight = FontWeight.Bold, color = PurpleDark, fontSize = 18.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Lucide.BicepsFlexed, contentDescription = null, tint = PurpleDark, modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Estadísticas de Fuerza", fontWeight = FontWeight.ExtraBold, color = PurpleDark, fontSize = 18.sp)
+            }
 
             Card(
                 modifier = Modifier

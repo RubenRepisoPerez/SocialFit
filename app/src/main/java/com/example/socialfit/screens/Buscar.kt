@@ -1,6 +1,5 @@
 package com.example.socialfit.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +22,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -52,7 +50,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.composables.icons.lucide.CircleUserRound
-import com.composables.icons.lucide.Cog
 import com.composables.icons.lucide.Dumbbell
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Search
@@ -82,12 +79,12 @@ fun Buscar(navController: NavController, emailRecibido: String){
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    var searchText by remember { mutableStateOf("") }
+    var TextoBuscado by remember { mutableStateOf("") }
     var buscarPorNick by remember { mutableStateOf(true) } // true = Nick, false = Nombre
     var usuariosEncontrados by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
 
-    LaunchedEffect(searchText, buscarPorNick) {
-        if (searchText.isBlank()) {
+    LaunchedEffect(TextoBuscado, buscarPorNick) {
+        if (TextoBuscado.isBlank()) {
             usuariosEncontrados = emptyList()
         } else {
             val campoFiltro = if (buscarPorNick) "nick" else "nombre"
@@ -99,12 +96,12 @@ fun Buscar(navController: NavController, emailRecibido: String){
                         .filter { it["email"] != emailRecibido }
 
                     val empiezan = lista.filter {
-                        (it[campoFiltro] as? String)?.lowercase()?.startsWith(searchText.lowercase()) == true
+                        (it[campoFiltro] as? String)?.lowercase()?.startsWith(TextoBuscado.lowercase()) == true
                     }
 
                     val contienen = lista.filter {
                         val valor = (it[campoFiltro] as? String)?.lowercase() ?: ""
-                        valor.contains(searchText.lowercase()) && !valor.startsWith(searchText.lowercase())
+                        valor.contains(TextoBuscado.lowercase()) && !valor.startsWith(TextoBuscado.lowercase())
                     }
 
                     usuariosEncontrados = empiezan + contienen
@@ -226,8 +223,8 @@ fun Buscar(navController: NavController, emailRecibido: String){
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             OutlinedTextField(
-                value = searchText,
-                onValueChange = { searchText = it },
+                value = TextoBuscado,
+                onValueChange = { TextoBuscado = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Escribe para buscar...") },
                 leadingIcon = { Icon(Lucide.Search, contentDescription = null, tint = PurpleDark) },
