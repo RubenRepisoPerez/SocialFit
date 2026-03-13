@@ -77,9 +77,9 @@ fun Registro(navController: NavController) {
     var sexo by remember { mutableStateOf("Hombre") }
     var contrasena = rememberTextFieldState("")
     var passVisible by remember { mutableStateOf(false) }
-    val emailPattern = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}") // Patrón a seguir en el email
+    val emailPattern = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
 
-    // Se obtiene el contexto actual, necesario para construir la base de datos Room y mostrar mensajes Toasts.
+    // Se obtiene el contexto actual
     val context = LocalContext.current
 
     //Conexion con FirebaseFirestore
@@ -215,7 +215,7 @@ fun Registro(navController: NavController) {
                     colors = RadioButtonDefaults.colors(
                         selectedColor = AmberGold,       // El círculo interior será dorado al marcarlo
                         unselectedColor = PurpleMedium,  // El borde será morado suave cuando esté vacío
-                        disabledSelectedColor = Color.Gray, // Opcional: color si el botón estuviera deshabilitado
+                        disabledSelectedColor = Color.Gray, // Si el botón estuviera deshabilitado
                         disabledUnselectedColor = Color.LightGray
                     ),
                     selected = sexo == "Hombre",
@@ -232,7 +232,7 @@ fun Registro(navController: NavController) {
                     colors = RadioButtonDefaults.colors(
                         selectedColor = AmberGold,       // El círculo interior será dorado al marcarlo
                         unselectedColor = PurpleMedium,  // El borde será morado suave cuando esté vacío
-                        disabledSelectedColor = Color.Gray, // Opcional: color si el botón estuviera deshabilitado
+                        disabledSelectedColor = Color.Gray, // Si el botón estuviera deshabilitado
                         disabledUnselectedColor = Color.LightGray
                     ),
                     selected = sexo == "Mujer",
@@ -245,7 +245,7 @@ fun Registro(navController: NavController) {
                 )
             }
 
-            Spacer(Modifier.size(20.dp)) // Espacio para que el boton no quede pegado a los formularios
+            Spacer(Modifier.size(20.dp))
 
             // Boton para añadir usuario
             Button(
@@ -280,14 +280,14 @@ fun Registro(navController: NavController) {
                             else -> {
 
                                     try {
-                                        // Crear el usuario en Firebase Auth (INDISPENSABLE para el email)
+                                        // Crear el usuario en Firebase Auth
                                         val registroAuth = FirebaseTemplate.registrarUsuario(email, contrasena.text.toString())
 
                                         if (registroAuth.isFailure) {
                                             throw registroAuth.exceptionOrNull() ?: Exception("Error desconocido en Auth")
                                         }
 
-                                        // Guardar en Firestore (usamos el UID del usuario recién creado)
+                                        // Guardar en Firestore
                                         val data = mapOf(
                                             "nick" to nick,
                                             "nombre" to nombre,

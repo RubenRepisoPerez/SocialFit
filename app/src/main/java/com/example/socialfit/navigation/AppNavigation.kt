@@ -21,6 +21,7 @@ import com.example.socialfit.screens.AnadirMarcas
 import com.example.socialfit.screens.BandejaMensajes
 import com.example.socialfit.screens.Buscar
 import com.example.socialfit.screens.Chat
+import com.example.socialfit.screens.Explorar
 import com.example.socialfit.screens.InicioSesion
 import com.example.socialfit.screens.Perfil
 import com.example.socialfit.screens.PerfilAgeno
@@ -147,6 +148,15 @@ fun AppNavigation(){
 
                 Chat(navController, backStackEntry.arguments?.getString("emailLocal").toString(),
                     backStackEntry.arguments?.getString("emailVisita").toString())
+            }
+
+            composable(
+                route = AppScreens.Explorar.route + "/{emailRecibido}",
+                arguments = listOf(navArgument(name = "emailRecibido") {
+                    type = NavType.StringType
+                })
+            ) { backStackEntry ->
+                Explorar(navController, backStackEntry.arguments?.getString("emailRecibido").toString())
             }
         }
     }

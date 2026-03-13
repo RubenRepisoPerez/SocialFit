@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -24,7 +25,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -178,9 +178,9 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                     val momentoActual = msg["momento"] as? Timestamp
                     val momentoPrevio = if (index > 0) mensajes[index - 1]["momento"] as? Timestamp else null
                     
-                    if (isNewDay(momentoActual, momentoPrevio)) {
+                    if (nuevoDia(momentoActual, momentoPrevio)) {
                         Text(
-                            text = formatDate(momentoActual),
+                            text = formatoFecha(momentoActual),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 16.dp),
@@ -238,11 +238,15 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                         maxLines = 4,
                         shape = RoundedCornerShape(28.dp),
                         leadingIcon = {
-                            IconButton(onClick = { /* Pendiente: Galería/Cámara */ }) {
+                            IconButton(
+                                modifier = Modifier.background(PurpleDark, CircleShape)
+                                    .size(40.dp),
+                                onClick = { /* Pendiente: Galería/Cámara */ }
+                            ) {
                                 Icon(
                                     Lucide.Image,
                                     contentDescription = "Enviar imagen",
-                                    tint = PurpleDark,
+                                    tint = AmberGold,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -250,20 +254,21 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                         trailingIcon = {
                             if (mensajeTexto.isNotBlank()) {
                                 IconButton(
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .height(35.dp)
+                                        .width(60.dp)
+                                        .background(PurpleDark, CircleShape),
                                     onClick = {
                                         enviarMensaje(emailLocal, emailVisita, mensajeTexto)
                                         mensajeTexto = ""
                                     },
-                                    modifier = Modifier
-                                        .padding(end = 4.dp)
-                                        .size(32.dp)
-                                        .background(PurpleDark, CircleShape)
                                 ) {
                                     Icon(
                                         Lucide.Send,
                                         contentDescription = "Enviar",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
+                                        tint = AmberGold,
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
@@ -272,7 +277,7 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                             focusedBorderColor = PurpleDark,
                             unfocusedBorderColor = PurpleDark.copy(alpha = 0.3f),
                             focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.7f)
+                            unfocusedContainerColor = Color.White
                         )
                     )
                 }
@@ -303,14 +308,14 @@ fun enviarMensaje(emisor: String, receptor: String, contenido: String) {
     )
 }
 
-fun isNewDay(current: Timestamp?, prev: Timestamp?): Boolean {
-    if (current == null) return false
-    if (prev == null) return true
+fun nuevoDia(aztual: Timestamp?, previo: Timestamp?): Boolean {
+    if (aztual == null) return false
+    if (previo == null) return true
     val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-    return sdf.format(current.toDate()) != sdf.format(prev.toDate())
+    return sdf.format(aztual.toDate()) != sdf.format(previo.toDate())
 }
 
-fun formatDate(momento: Timestamp?): String {
+fun formatoFecha(momento: Timestamp?): String {
     if (momento == null) return ""
     val sdf = SimpleDateFormat("d 'de' MMMM", Locale( "es", "ES"))
     return sdf.format(momento.toDate())

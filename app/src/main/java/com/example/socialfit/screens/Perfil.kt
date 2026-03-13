@@ -147,6 +147,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
     var loadingImage by remember { mutableStateOf(false) }
     val marcas = remember { mutableStateMapOf<String, Double>() }
 
+    // Cargar seguidores y siguiendo al iniciar
     LaunchedEffect(emailRecibido) {
         if (emailRecibido.isNotEmpty()) {
             val listenerSeguidores = dbFirebase.collection("seguimientos")
@@ -167,12 +168,13 @@ fun Perfil(navController: NavController, emailRecibido: String){
         }
     }
 
+    // Cargar imagen de perfil y galeria para seleccionar imagen
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
             loadingImage = true
-            // Ruta en Storage: carpeta 'fotos_perfil' con el nombre del ID del usuario
+            // Ruta en Storage, carpeta 'fotos_perfil' con el nombre del ID del usuario
             val storageRef = storage.reference.child("fotos_perfil/$idUsuario.jpg")
 
             storageRef.putFile(uri)
@@ -216,7 +218,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
         }
     }
 
-// Un mapa o estado para guardar los horarios de cada día (puedes inicializarlo con datos de Firebase luego)
+    // Un mapa o estado para guardar los horarios de cada día
     val horariosDias = remember { mutableStateMapOf<String, String>().apply {
         listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo").forEach {
             put(it, "17:00 - 18:30") // Valor por defecto
@@ -227,6 +229,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
     // Lista rutinas
     var listaRutinas by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
 
+    // Carga datos varios del usuario con su email
     LaunchedEffect(Unit) {
         val idEncontrado = FirebaseTemplate.obtenerIdConEmail(emailRecibido)
         if (idEncontrado != null) {
@@ -276,7 +279,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         pesoPecho = obtenerPeso("Pecho")
                         pesoBiceps = obtenerPeso("Bíceps")
                         pesoTriceps = obtenerPeso("Triceps")
-                        pesoHombro = obtenerPeso("Deltoide")
+                        pesoHombro = obtenerPeso("Deltoides")
                         pesoTrapecio = obtenerPeso("Trapecio")
                         pesoCuadriceps = obtenerPeso("Cuadriceps")
                         pesoEspaldaBaja = obtenerPeso("Espalda Baja")
@@ -289,7 +292,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         pesoGemelo = obtenerPeso("Gemelo")
 
 
-                        // Si también quieres llenar el mapa 'marcas' que tenías:
+                        // LLenamos las marcas de pesos tambien
                         val nombresMusculos = listOf("Pecho", "Biceps", "Triceps", "Hombros", "Piernas", "Espalda", "Abdomen")
                         nombresMusculos.forEach { musculo ->
                             marcas[musculo] = obtenerPeso(musculo)
@@ -333,20 +336,28 @@ fun Perfil(navController: NavController, emailRecibido: String){
         topBar = {
             CenterAlignedTopAppBar(modifier = Modifier.height(100.dp),
                 title = {
-                    Text(text = "Mi Perfil", fontSize = 30.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(text = "Mi Perfil",
+                        fontSize = 30.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 },
 
                 colors = topAppBarColors(
                     containerColor = PurpleDark,
                     titleContentColor = Color.White),
 
+                // Pantalla de ajustes, cerrar sesion de momento
                 actions = {
                     IconButton(onClick = {
                         navController.navigate(route = AppScreens.Ajustes.route + "/" + emailRecibido)
-                        Toast.makeText(context, "Volver atrás", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Ajustes", Toast.LENGTH_SHORT).show()
                     }
                     ) {
-                        Icon(Lucide.Cog, "backIcon", tint = Color.White)
+                        Icon(Lucide.Cog,
+                            "backIcon",
+                            tint = Color.White
+                        )
                     }
 
                 }
@@ -360,7 +371,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 NavigationBarItem(
                     selected = false,
                     onClick = {
-                        //navController.navigate(route = AppScreens.MisInmuebles.route + "/" + emailRecibido)
+                        navController.navigate(route = AppScreens.Explorar.route + "/" + emailRecibido)
                     },
                     icon = {
                         Icon(
@@ -373,7 +384,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         selectedTextColor = AmberGold,   // Texto seleccionado en Dorado
                         unselectedIconColor = AmberGold,
                         unselectedTextColor = AmberGold,
-                        indicatorColor = PurpleMedium     // El "óvalo" detrás del icono seleccionado
+                        indicatorColor = PurpleMedium
                     )
                 )
                 NavigationBarItem(
@@ -392,7 +403,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         selectedTextColor = AmberGold,   // Texto seleccionado en Dorado
                         unselectedIconColor = AmberGold,
                         unselectedTextColor = AmberGold,
-                        indicatorColor = PurpleMedium     // El "óvalo" detrás del icono seleccionado
+                        indicatorColor = PurpleMedium
                     )
                 )
                 NavigationBarItem(
@@ -411,9 +422,10 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         selectedTextColor = AmberGold,   // Texto seleccionado en Dorado
                         unselectedIconColor = AmberGold,
                         unselectedTextColor = AmberGold,
-                        indicatorColor = PurpleMedium     // El "óvalo" detrás del icono seleccionado
+                        indicatorColor = PurpleMedium
                     )
                 )
+                // Quitamos la opcion de navegar porque ya estamos aqui
                 NavigationBarItem(
                     selected = true,
                     onClick = {
@@ -423,14 +435,14 @@ fun Perfil(navController: NavController, emailRecibido: String){
                         Icon(
                             Lucide.CircleUserRound,
                             contentDescription = "Perfil",
-                            tint = if (true) PurpleDark else AmberGold // Opcional: Icono oscuro sobre fondo claro
+                            tint = if (true) PurpleDark else AmberGold
                         )
                     },
                     label = { Text("Perfil") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = PurpleDark,      // Icono oscuro para que resalte sobre el óvalo dorado
                         selectedTextColor = AmberGold,       // Texto en dorado
-                        indicatorColor = AmberGold,          // ¡EL ÓVALO! Ahora en Dorado para que destaque
+                        indicatorColor = AmberGold,
                         unselectedIconColor = AmberGold,
                         unselectedTextColor = AmberGold
                     )

@@ -113,7 +113,11 @@ fun InicioSesion(navController: NavController){
         topBar = {
             CenterAlignedTopAppBar(modifier = Modifier.height(100.dp),
                 title = {
-                    Text(text = "Iniciar sesion", fontSize = 30.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(text = "Iniciar sesion",
+                        fontSize = 30.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 colors = topAppBarColors(
                     containerColor = PurpleDark,
@@ -133,7 +137,7 @@ fun InicioSesion(navController: NavController){
                 color = PurpleDark,
                 fontWeight = FontWeight.Bold)
 
-            Spacer(modifier = Modifier.height(30.dp)) // Espacio
+            Spacer(modifier = Modifier.height(30.dp))
 
             // Campo para rellenar el email
             OutlinedTextField(
@@ -149,7 +153,7 @@ fun InicioSesion(navController: NavController){
                 modifier = Modifier.width(300.dp)
             )
 
-            Spacer(modifier = Modifier.height(15.dp)) // Espacio para separar los formularios
+            Spacer(modifier = Modifier.height(15.dp))
 
 
             // Campo para rellenar la contraseña
@@ -176,7 +180,7 @@ fun InicioSesion(navController: NavController){
                 textObfuscationMode = if(passVisible) TextObfuscationMode.Visible else TextObfuscationMode.RevealLastTyped
             )
 
-            Spacer(Modifier.size(15.dp)) // Espacio para separar el boton de aceptar
+            Spacer(Modifier.size(15.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,

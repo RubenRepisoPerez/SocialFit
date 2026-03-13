@@ -32,6 +32,7 @@ import com.composables.icons.lucide.*
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import com.example.socialfit.R
+import com.example.socialfit.navigation.AppScreens
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -267,7 +268,9 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
                 }
 
                 Button(
-                    onClick = { /* Lógica de mensajes */ },
+                    onClick = {
+                        navController.navigate(route = AppScreens.Chat.route + "/" + emailLocal + "/" + emailVisita)
+                    },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     border = BorderStroke(1.dp, PurpleDark),

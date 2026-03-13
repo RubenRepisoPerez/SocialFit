@@ -10,4 +10,5 @@ sealed class AppScreens (val route: String) {
     object Buscar: AppScreens("Buscar")
     object BandejaMensajes: AppScreens("BandejaMensajes")
     object Chat: AppScreens("Chat")
+    object Explorar: AppScreens("Explorar")
 }

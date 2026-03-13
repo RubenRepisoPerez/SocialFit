@@ -69,7 +69,6 @@ fun AnadirMarcas(navController: NavController, emailRecibido: String) {
     val db = Firebase.firestore
     val context = LocalContext.current
 
-    // Colores (siguiendo tu Perfil.kt)
     val PurpleDark = Color(0xFF2D1B4E)
     val AmberGold = Color(0xFFFFC107)
     val BackgroundGrayBlue = Color(0xFFDDE1E7)
@@ -104,11 +103,12 @@ fun AnadirMarcas(navController: NavController, emailRecibido: String) {
         EjercicioMarca("Remo en T", "Trapecio", R.drawable.ejerciciotrapecio),
         EjercicioMarca("Pajaros", "Hombro Posterior", R.drawable.ejerciciohombroposterior),
         EjercicioMarca("Curl Femoral", "Bíceps Femoral", R.drawable.ejerciciofemoral),
-        EjercicioMarca("Hip Thrust", "Gúteo", R.drawable.ejerciciogluteo),
+        EjercicioMarca("Hip Thrust", "Glúteo", R.drawable.ejerciciogluteo),
         EjercicioMarca("Elevación Talones", "Gemelo", R.drawable.ejerciciogemelo),
         EjercicioMarca("Curl de Muñeca", "Antebrazo", R.drawable.ejercicioantebrazo),
         EjercicioMarca("Extensiones Polea", "Triceps", R.drawable.ejerciciotriceps),
         EjercicioMarca("Sentadilla Sumo", "Abductor", R.drawable.ejercicioaductores),
+        EjercicioMarca("Crunch en Polea", "Abdomen", R.drawable.ejercicioabdomen),
         )
 
     Scaffold(

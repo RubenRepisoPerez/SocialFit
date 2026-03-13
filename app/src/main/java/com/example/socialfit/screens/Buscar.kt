@@ -137,7 +137,7 @@ fun Buscar(navController: NavController, emailRecibido: String){
                 NavigationBarItem(
                     selected = false,
                     onClick = {
-                        //navController.navigate(route = AppScreens.MisInmuebles.route + "/" + emailRecibido)
+                        navController.navigate(route = AppScreens.Explorar.route + "/" + emailRecibido)
                     },
                     icon = {
                         Icon(
