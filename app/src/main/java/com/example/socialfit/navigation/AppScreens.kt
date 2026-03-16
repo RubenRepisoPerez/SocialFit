@@ -11,4 +11,6 @@ sealed class AppScreens (val route: String) {
     object BandejaMensajes: AppScreens("BandejaMensajes")
     object Chat: AppScreens("Chat")
     object Explorar: AppScreens("Explorar")
+    object ImagenEnviar: AppScreens("ImagenEnviar")
+    object CamaraMensajes: AppScreens("CamaraMensajes")
 }

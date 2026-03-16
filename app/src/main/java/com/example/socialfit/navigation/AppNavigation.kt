@@ -20,8 +20,10 @@ import com.example.socialfit.screens.Ajustes
 import com.example.socialfit.screens.AnadirMarcas
 import com.example.socialfit.screens.BandejaMensajes
 import com.example.socialfit.screens.Buscar
+import com.example.socialfit.screens.CamaraMensajes
 import com.example.socialfit.screens.Chat
 import com.example.socialfit.screens.Explorar
+import com.example.socialfit.screens.ImagenEnviar
 import com.example.socialfit.screens.InicioSesion
 import com.example.socialfit.screens.Perfil
 import com.example.socialfit.screens.PerfilAgeno
@@ -157,6 +159,37 @@ fun AppNavigation(){
                 })
             ) { backStackEntry ->
                 Explorar(navController, backStackEntry.arguments?.getString("emailRecibido").toString())
+            }
+
+            composable(
+                route = "ImagenEnviar/{emailLocal}/{emailVisita}/{imageUri}",
+                arguments = listOf(
+                    navArgument("emailLocal") { type = NavType.StringType },
+                    navArgument("emailVisita") { type = NavType.StringType },
+                    navArgument("imageUri") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val emailLocal = backStackEntry.arguments?.getString("emailLocal") ?: ""
+                val emailVisita = backStackEntry.arguments?.getString("emailVisita") ?: ""
+                val imageUri = backStackEntry.arguments?.getString("imageUri") ?: ""
+
+                ImagenEnviar(navController, emailLocal, emailVisita, imageUri)
+            }
+
+            composable(
+                route = AppScreens.CamaraMensajes.route + "/{emailLocal}/{emailVisita}",
+                arguments = listOf(
+                    navArgument(name = "emailLocal") {
+                        type = NavType.StringType
+                    },
+                    navArgument(name = "emailVisita") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+
+                CamaraMensajes(navController, backStackEntry.arguments?.getString("emailLocal").toString(),
+                    backStackEntry.arguments?.getString("emailVisita").toString())
             }
         }
     }

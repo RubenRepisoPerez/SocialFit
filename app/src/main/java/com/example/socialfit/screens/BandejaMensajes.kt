@@ -354,8 +354,11 @@ fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailR
     val otroEmail = chat["otroEmail"] as? String ?: ""
     var idUsuario by remember { mutableStateOf("") }
 
-    val noLeidos = chat["noLeidos.$emailRecibido"]
-    val tieneMensajesSinLeer = noLeidos.toString().toInt() > 0
+    val noLeidosPlano = chat["noLeidos.$emailRecibido"] as? Long
+    val noLeidosMap = chat["noLeidos"] as? Map<String, Any>
+    val noLeidosAnidado = (noLeidosMap?.get(emailRecibido) as? Long)
+    val noLeidosCount = (noLeidosPlano ?: noLeidosAnidado ?: 0L).toInt()
+    val tieneMensajesSinLeer = noLeidosCount > 0
 
 
     LaunchedEffect(otroEmail) {
@@ -449,10 +452,10 @@ fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailR
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (noLeidos.toString().toInt() == 1) "•" else "+$noLeidos",
+                        text = if (noLeidosCount == 1) "•" else "+$noLeidosCount",
                         color = PurpleDark,
                         fontWeight = FontWeight.Black,
-                        fontSize = if (noLeidos.toString().toInt() == 1) 20.sp else 12.sp
+                        fontSize = if (noLeidosCount == 1) 20.sp else 12.sp
                     )
                 }
             }

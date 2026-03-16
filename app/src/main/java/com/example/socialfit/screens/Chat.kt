@@ -1,5 +1,9 @@
 package com.example.socialfit.screens
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,12 +18,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +36,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -44,19 +51,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.CircleUserRound
 import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Send
 import com.example.socialfit.FirebaseTemplate
+import com.example.socialfit.navigation.AppScreens
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
@@ -64,16 +75,21 @@ import java.text.SimpleDateFormat
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.storage
+import java.io.File
 import java.util.Locale
+import kotlin.io.path.exists
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Chat(navController: NavController, emailLocal: String, emailVisita: String) {
     val db = Firebase.firestore
+    val context = LocalContext.current
     val PurpleDark = Color(0xFF2D1B4E)
     val AmberGold = Color(0xFFFFC107)
     val BackgroundGrayBlue = Color(0xFFDDE1E7)
 
+    var tempUri by remember { mutableStateOf<Uri?>(null) }
     var nickVisita by remember { mutableStateOf("") }
     var nombreVisita by remember { mutableStateOf("") }
     var fotoVisita by remember { mutableStateOf("") }
@@ -83,15 +99,41 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
     val listState = rememberLazyListState()
     val chatId = if (emailLocal < emailVisita) "${emailLocal}_$emailVisita" else "${emailVisita}_$emailLocal"
 
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val encodedUri = Uri.encode(it.toString())
+            navController.navigate("ImagenEnviar/$emailLocal/$emailVisita/$encodedUri")
+        }
+    }
+
+    fun crearImagenUri(context: Context): Uri {
+        val directory = File(context.externalCacheDir, "camera_photos")
+        if (!directory.exists()) directory.mkdirs()
+        val file = File.createTempFile("chat_pic_", ".jpg", directory)
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempUri != null) {
+            val encodedUri = Uri.encode(tempUri.toString())
+            navController.navigate("ImagenEnviar/$emailLocal/$emailVisita/$encodedUri")
+        }
+    }
+
     LaunchedEffect(chatId) {
         val db = Firebase.firestore
         val actualizaciones = hashMapOf(
             "noLeidos.$emailLocal" to 0
         )
         db.collection("chats").document(chatId).set(actualizaciones, SetOptions.merge())
-
-        db.collection("chats").document(chatId)
-            .update("noLeidos.$emailLocal", 0)
     }
 
     LaunchedEffect(emailVisita) {
@@ -191,7 +233,7 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                 itemsIndexed(mensajes) { index, msg ->
                     val momentoActual = msg["momento"] as? Timestamp
                     val momentoPrevio = if (index > 0) mensajes[index - 1]["momento"] as? Timestamp else null
-                    
+
                     if (nuevoDia(momentoActual, momentoPrevio)) {
                         Text(
                             text = formatoFecha(momentoActual),
@@ -208,8 +250,13 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                     }
 
                     val esMio = msg["emisor"] == emailLocal
-                    Box(modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = if (esMio) Alignment.CenterEnd else Alignment.CenterStart) {
+                    val imagenUrl = msg["imagenUrl"] as? String
+                    val contenidoTexto = msg["contenido"] as? String
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = if (esMio) Alignment.CenterEnd else Alignment.CenterStart
+                    ) {
                         Card(
                             shape = RoundedCornerShape(
                                 topStart = 16.dp, topEnd = 16.dp,
@@ -220,14 +267,30 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                                 containerColor = if (esMio) PurpleDark else Color.White
                             )
                         ) {
-                            Text(
-                                text = msg["contenido"] as? String ?: "",
-                                modifier = Modifier.padding(
-                                    horizontal = 12.dp,
-                                    vertical = 8.dp
-                                ),
-                                color = if (esMio) Color.White else PurpleDark
-                            )
+                            Column {
+                                if (!imagenUrl.isNullOrEmpty()) {
+                                    AsyncImage(
+                                        model = imagenUrl,
+                                        contentDescription = "Imagen enviada",
+                                        modifier = Modifier
+                                            .padding(4.dp)
+                                            .sizeIn(maxWidth = 250.dp, maxHeight = 400.dp)
+                                            .clip(RoundedCornerShape(12.dp)),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                }
+
+                                if (!contenidoTexto.isNullOrEmpty()) {
+                                    Text(
+                                        text = contenidoTexto,
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp,
+                                            vertical = 8.dp
+                                        ),
+                                        color = if (esMio) Color.White else PurpleDark
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -256,11 +319,13 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                                 modifier = Modifier
                                     .background(PurpleDark, CircleShape)
                                     .size(40.dp),
-                                onClick = { /* Pendiente: Galería/Cámara */ }
+                                onClick = {
+                                    navController.navigate(route = AppScreens.CamaraMensajes.route + "/" + emailLocal + "/" + emailVisita)
+                                }
                             ) {
                                 Icon(
-                                    Lucide.Image,
-                                    contentDescription = "Enviar imagen",
+                                    Lucide.Camera,
+                                    contentDescription = "Abrir cámara",
                                     tint = AmberGold,
                                     modifier = Modifier.size(22.dp)
                                 )
@@ -337,4 +402,41 @@ fun formatoFecha(momento: Timestamp?): String {
     if (momento == null) return ""
     val sdf = SimpleDateFormat("d 'de' MMMM", Locale( "es", "ES"))
     return sdf.format(momento.toDate())
+}
+
+fun subirImagenYEnviar(uri: Uri, emisor: String, receptor: String) {
+    val db = Firebase.firestore
+    val storageRef = Firebase.storage.reference
+    val chatId = if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor"
+
+    // Nombre único para la imagen
+    val fileName = "chat_images/$chatId/${System.currentTimeMillis()}.jpg"
+    val imageRef = storageRef.child(fileName)
+
+    // Subir a Firebase Storage
+    imageRef.putFile(uri).addOnSuccessListener {
+        imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+            val urlImagen = downloadUri.toString()
+
+            // Enviar mensaje con la URL
+            val momento = Timestamp.now()
+            val mensaje = hashMapOf(
+                "emisor" to emisor,
+                "imagenUrl" to urlImagen,
+                "momento" to momento,
+                "tipo" to "imagen"
+            )
+
+            db.collection("chats").document(chatId).collection("mensajes").add(mensaje)
+
+            // Actualizar bandeja de entrada
+            db.collection("chats").document(chatId).set(
+                mapOf(
+                    "ultimoMensaje" to "Imagen",
+                    "ultimoMomento" to momento,
+                    "noLeidos.$receptor" to FieldValue.increment(1)
+                ), SetOptions.merge()
+            )
+        }
+    }
 }
