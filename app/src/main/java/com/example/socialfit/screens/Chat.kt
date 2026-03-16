@@ -62,6 +62,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import java.text.SimpleDateFormat
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.SetOptions
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +81,18 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
     var mensajeTexto by remember { mutableStateOf("") }
     val mensajes = remember { mutableStateListOf<Map<String, Any>>() }
     val listState = rememberLazyListState()
+    val chatId = if (emailLocal < emailVisita) "${emailLocal}_$emailVisita" else "${emailVisita}_$emailLocal"
+
+    LaunchedEffect(chatId) {
+        val db = Firebase.firestore
+        val actualizaciones = hashMapOf(
+            "noLeidos.$emailLocal" to 0
+        )
+        db.collection("chats").document(chatId).set(actualizaciones, SetOptions.merge())
+
+        db.collection("chats").document(chatId)
+            .update("noLeidos.$emailLocal", 0)
+    }
 
     LaunchedEffect(emailVisita) {
         val idEncontrado = FirebaseTemplate.obtenerIdConEmail(emailVisita)
@@ -239,7 +253,8 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                         shape = RoundedCornerShape(28.dp),
                         leadingIcon = {
                             IconButton(
-                                modifier = Modifier.background(PurpleDark, CircleShape)
+                                modifier = Modifier
+                                    .background(PurpleDark, CircleShape)
                                     .size(40.dp),
                                 onClick = { /* Pendiente: Galería/Cámara */ }
                             ) {
@@ -260,8 +275,10 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                                         .width(60.dp)
                                         .background(PurpleDark, CircleShape),
                                     onClick = {
-                                        enviarMensaje(emailLocal, emailVisita, mensajeTexto)
-                                        mensajeTexto = ""
+                                        if (mensajeTexto.isNotBlank()){
+                                            enviarMensaje(emailLocal, emailVisita, mensajeTexto)
+                                            mensajeTexto = ""
+                                        }
                                     },
                                 ) {
                                     Icon(
@@ -299,13 +316,14 @@ fun enviarMensaje(emisor: String, receptor: String, contenido: String) {
 
     db.collection("chats").document(chatId).collection("mensajes").add(mensaje)
 
-    db.collection("chats").document(chatId).set(
-        mapOf(
-            "ultimoMensaje" to contenido,
-            "ultimoMomento" to momento,
-            "participantes" to listOf(emisor, receptor)
-        )
+    val actualizaciones = hashMapOf(
+        "ultimoMensaje" to contenido,
+        "ultimoMomento" to momento,
+        "participantes" to listOf(emisor, receptor),
+        "noLeidos.$receptor" to FieldValue.increment(1)
     )
+
+    db.collection("chats").document(chatId).set(actualizaciones, SetOptions.merge())
 }
 
 fun nuevoDia(aztual: Timestamp?, previo: Timestamp?): Boolean {

@@ -345,6 +345,7 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
 @Composable
 fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailRecibido: String) {
     val PurpleDark = Color(0xFF2D1B4E)
+    val AmberGold = Color(0xFFFFC107)
     val BackgroundGrayBlue = Color(0xFFDDE1E7)
     val db = Firebase.firestore
 
@@ -352,6 +353,9 @@ fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailR
     var otroFoto by remember { mutableStateOf(chat["otroFoto"] as? String ?: "") }
     val otroEmail = chat["otroEmail"] as? String ?: ""
     var idUsuario by remember { mutableStateOf("") }
+
+    val noLeidos = chat["noLeidos.$emailRecibido"]
+    val tieneMensajesSinLeer = noLeidos.toString().toInt() > 0
 
 
     LaunchedEffect(otroEmail) {
@@ -365,7 +369,6 @@ fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailR
                             otroNick = document.getString("nick") ?: "Usuario"
                             otroFoto = document.getString("fotoPerfil") ?: ""
                         } else {
-                            // Si el ID del documento no es el email, buscamos por campo
                             db.collection("usuario").whereEqualTo("email", otroEmail).get()
                                 .addOnSuccessListener { snapshot ->
                                     if (!snapshot.isEmpty) {
@@ -386,7 +389,9 @@ fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailR
             .clickable {
                 navController.navigate(route = AppScreens.Chat.route + "/" + emailRecibido + "/" + otroEmail)
             },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = if (tieneMensajesSinLeer) Color.White else Color.White.copy(alpha = 0.85f)
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -421,19 +426,35 @@ fun ItemChatBandeja(chat: Map<String, Any>, navController: NavController, emailR
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    // USAMOS otroNick (el estado local) en lugar de chat["otroNick"]
                     text = otroNick,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = if (tieneMensajesSinLeer) FontWeight.ExtraBold else FontWeight.Bold,
                     color = PurpleDark,
                     fontSize = 16.sp
                 )
                 Text(
                     text = chat["ultimoMensaje"] as? String ?: "Sin mensajes",
                     fontSize = 13.sp,
-                    color = Color.Gray,
+                    color = if (tieneMensajesSinLeer) Color.Black else Color.Gray,
+                    fontWeight = if (tieneMensajesSinLeer) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+            if (tieneMensajesSinLeer) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(28.dp)
+                        .background(AmberGold, shape = CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (noLeidos.toString().toInt() == 1) "•" else "+$noLeidos",
+                        color = PurpleDark,
+                        fontWeight = FontWeight.Black,
+                        fontSize = if (noLeidos.toString().toInt() == 1) 20.sp else 12.sp
+                    )
+                }
             }
         }
     }
