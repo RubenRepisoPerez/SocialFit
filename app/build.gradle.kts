@@ -53,7 +53,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
-
     //implementation(libs.androidx.navigation.runtime.ktx)
     //implementation(libs.androidx.material3)
     //implementation(libs.androidx.navigation.compose)
@@ -78,20 +77,20 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.12.00"))
     implementation("com.google.accompanist:accompanist-permissions:0.31.1-alpha")
     implementation("com.google.firebase:firebase-firestore:26.0.2")
-
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     //implementation(platform(libs.firebase.bom))
     //implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation("com.google.firebase:firebase-storage-ktx")
-
     implementation("com.google.accompanist:accompanist-permissions:0.31.1-alpha")
-
     val camerax_version = "1.3.4" // Versión estable
     implementation("androidx.camera:camera-core:$camerax_version")
     implementation("androidx.camera:camera-camera2:$camerax_version")
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
     implementation("com.google.guava:guava:33.0.0-android")
+    implementation("androidx.camera:camera-video:1.3.4")
+    implementation("androidx.media3:media3-exoplayer:1.2.0")
+    implementation("androidx.media3:media3-ui:1.2.0")
 }

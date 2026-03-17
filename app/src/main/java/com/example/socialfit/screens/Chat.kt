@@ -40,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -57,7 +58,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.composables.icons.lucide.ArrowLeft
@@ -184,7 +190,8 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
-                                Icon(Lucide.CircleUserRound,
+                                Icon(
+                                    Lucide.CircleUserRound,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     tint = Color.White)
@@ -206,7 +213,8 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Lucide.ArrowLeft,
+                        Icon(
+                            Lucide.ArrowLeft,
                             contentDescription = "Atrás",
                             tint = Color.White
                         )
@@ -251,6 +259,7 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
 
                     val esMio = msg["emisor"] == emailLocal
                     val imagenUrl = msg["imagenUrl"] as? String
+                    val videoUrl = msg["videoUrl"] as? String
                     val contenidoTexto = msg["contenido"] as? String
 
                     Box(
@@ -278,6 +287,10 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                                             .clip(RoundedCornerShape(12.dp)),
                                         contentScale = ContentScale.Fit
                                     )
+                                }
+
+                                if (!videoUrl.isNullOrEmpty()) {
+                                    VideoMessagePlayer(videoUrl = videoUrl)
                                 }
 
                                 if (!contenidoTexto.isNullOrEmpty()) {
@@ -438,5 +451,48 @@ fun subirImagenYEnviar(uri: Uri, emisor: String, receptor: String) {
                 ), SetOptions.merge()
             )
         }
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun VideoMessagePlayer(videoUrl: String) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(videoUrl))
+            prepare()
+            // No lo reproducimos automáticamente para no saturar al usuario
+            playWhenReady = false
+        }
+    }
+
+    // Liberar recursos cuando el mensaje sale de la pantalla
+    DisposableEffect(Unit) {
+        onDispose { exoPlayer.release() }
+    }
+
+    Box(
+        modifier = Modifier
+            .sizeIn(maxWidth = 250.dp, maxHeight = 400.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        AndroidView(
+            factory = {
+                PlayerView(it).apply {
+                    player = exoPlayer
+                    useController = true
+                    // Ocultar controles automáticamente
+                    hideController()
+                    layoutParams = android.widget.FrameLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
