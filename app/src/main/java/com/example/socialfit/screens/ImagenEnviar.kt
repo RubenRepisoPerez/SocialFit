@@ -194,7 +194,18 @@ fun ImagenEnviar(navController: NavController, emailLocal: String, emailVisita: 
                                 onClick = {
                                     subiendo = true
                                     ejecutarSubida(decodedUri, emailLocal, emailVisita, comentario, esVideo) {
-                                        navController.navigate(AppScreens.Chat.route + "/$emailLocal/$emailVisita")
+                                        // SI ES DIARIO, VOLVEMOS A EXPLORAR, SI NO, AL CHAT
+                                        if (emailVisita == "DIARIO" || emailVisita == "CONTENIDO") {
+                                            navController.navigate(AppScreens.Explorar.route + "/$emailLocal") {
+                                                // Esto limpia la pila para que no puedas volver atrás a la foto enviada
+                                                popUpTo(AppScreens.Explorar.route + "/$emailLocal") { inclusive = true }
+                                            }
+                                        } else {
+                                            // Si no, volvemos al chat privado
+                                            navController.navigate(AppScreens.Chat.route + "/$emailLocal/$emailVisita") {
+                                                popUpTo(AppScreens.Chat.route + "/$emailLocal/$emailVisita") { inclusive = true }
+                                            }
+                                        }
                                     }
                                 },
                                 modifier = Modifier.size(48.dp).background(AmberGold, CircleShape)
@@ -212,38 +223,80 @@ fun ImagenEnviar(navController: NavController, emailLocal: String, emailVisita: 
 private fun ejecutarSubida(uri: Uri, emisor: String, receptor: String, texto: String, esVideo: Boolean, onComplete: () -> Unit) {
     val db = Firebase.firestore
     val storageRef = Firebase.storage.reference
-    val chatId = if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor"
 
-    // Cambiar extensión según el tipo
+    // 1. Determinar carpeta y ID de chat/diario
+    val folder = if (receptor == "DIARIO") "diario" else "chat_media"
+    val subFolder = if (receptor == "DIARIO") emisor else (if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor")
+
     val extension = if (esVideo) "mp4" else "jpg"
-    val fileName = "chat_media/$chatId/${System.currentTimeMillis()}.$extension"
+    val fileName = "$folder/$subFolder/${System.currentTimeMillis()}.$extension"
     val fileRef = storageRef.child(fileName)
 
     fileRef.putFile(uri).addOnSuccessListener {
         fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
             val momento = Timestamp.now()
+            val urlDescarga = downloadUri.toString()
 
-            // Creamos el mensaje. Si es video, usamos 'videoUrl', si no 'imagenUrl'
-            val mensaje = hashMapOf(
-                "emisor" to emisor,
-                "contenido" to texto,
-                "momento" to momento,
-                if (esVideo) "videoUrl" to downloadUri.toString() else "imagenUrl" to downloadUri.toString()
-            )
+            if (receptor == "DIARIO") {
+                // --- LÓGICA DE FOTO DEL DÍA (Nueva Estructura) ---
+                val hoy = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
 
-            db.collection("chats").document(chatId).collection("mensajes").add(mensaje)
+                val datosFotoDiaria = hashMapOf(
+                    "autorEmail" to emisor,
+                    "fotoUrl" to urlDescarga,
+                    "comentario" to texto,
+                    "timestamp" to momento,
+                    "esVideo" to esVideo,
+                    "fecha" to hoy
+                )
 
-            // Actualizar último mensaje en la bandeja
-            val prefijo = if (esVideo) "🎥 Vídeo" else "📷 Imagen"
-            val textoFinal = if (texto.isNotEmpty()) "$prefijo: $texto" else prefijo
+                // Guardamos en: fotosDiarias (Col) -> Fecha (Doc) -> fotos (SubCol) -> Usuario (Doc)
+                db.collection("fotosDiarias")
+                    .document(hoy)
+                    .collection("fotos")
+                    .document(emisor) // El documento es el email del usuario para que solo haya 1 por día
+                    .set(datosFotoDiaria)
+                    .addOnSuccessListener { onComplete() }
 
-            val actualizaciones = hashMapOf(
-                "ultimoMensaje" to textoFinal,
-                "ultimoMomento" to momento,
-                "noLeidos.$receptor" to FieldValue.increment(1)
-            )
-            db.collection("chats").document(chatId).set(actualizaciones, SetOptions.merge())
-            onComplete()
+            }
+            else if (receptor == "CONTENIDO") {
+                // --- LÓGICA DE PUBLICACIÓN GLOBAL ---
+                val datosPost = hashMapOf(
+                    "autorEmail" to emisor,
+                    "mediaUrl" to urlDescarga,
+                    "comentario" to texto,
+                    "timestamp" to momento,
+                    "tipo" to if (esVideo) "video" else "imagen",
+                    "likes" to emptyMap<String, Boolean>(), // Para gestionar quién da like
+                    "totalLikes" to 0
+                )
+
+                db.collection("publicaciones")
+                    .add(datosPost)
+                    .addOnSuccessListener { onComplete() }
+            } else {
+                // --- LÓGICA DE CHAT PRIVADO (Existente) ---
+                val chatId = if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor"
+                val mensaje = hashMapOf(
+                    "emisor" to emisor,
+                    "contenido" to texto,
+                    "momento" to momento,
+                    if (esVideo) "videoUrl" to urlDescarga else "imagenUrl" to urlDescarga
+                )
+
+                db.collection("chats").document(chatId).collection("mensajes").add(mensaje)
+
+                val prefijo = if (esVideo) "🎥 Vídeo" else "📷 Imagen"
+                val textoFinal = if (texto.isNotEmpty()) "$prefijo: $texto" else prefijo
+
+                val actualizaciones = hashMapOf(
+                    "ultimoMensaje" to textoFinal,
+                    "ultimoMomento" to momento,
+                    "noLeidos.$receptor" to FieldValue.increment(1)
+                )
+                db.collection("chats").document(chatId).set(actualizaciones, SetOptions.merge())
+                onComplete()
+            }
         }
     }
 }
