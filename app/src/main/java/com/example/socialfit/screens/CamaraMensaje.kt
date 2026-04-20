@@ -112,11 +112,32 @@ fun CamaraMensajes(navController: NavController, emailLocal: String, emailVisita
     }
 
     // Launcher galería actualizado para IMAGEN Y VÍDEO
-    val abrirGaleria = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    // Función auxiliar para copiar el archivo inmediatamente
+    fun crearCopiaTemporal(context: Context, uriOriginal: Uri): Uri? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uriOriginal)
+            val tempFile = File(context.cacheDir, "post_temp_${System.currentTimeMillis()}.jpg")
+            inputStream?.use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            Uri.fromFile(tempFile)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    val abrirGaleria = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         uri?.let {
-            val encodedUri = Uri.encode(it.toString())
-            // Detectar si es video o imagen
-            navController.navigate(AppScreens.ImagenEnviar.route + "/$emailLocal/$emailVisita/$encodedUri")
+            // COPIAMOS EL ARCHIVO AQUÍ MISMO
+            val uriSegura = crearCopiaTemporal(context, it)
+            if (uriSegura != null) {
+                val encodedUri = Uri.encode(uriSegura.toString())
+                navController.navigate(route = AppScreens.ImagenEnviar.route + "/$emailLocal/$emailVisita/$encodedUri")
+            }
         }
     }
 

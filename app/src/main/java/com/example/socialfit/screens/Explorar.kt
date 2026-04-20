@@ -36,6 +36,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.storage
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -108,28 +109,93 @@ fun Explorar(navController: NavController, emailRecibido: String){
     var puedeSubirFoto by remember { mutableStateOf(false) }
     var fotosDiarias by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     var postsComunidad by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var yaSubioFotoHoy by remember { mutableStateOf(false) }
 
-    // 1. Lógica para saber si el usuario está en su horario de entrenamiento
-    LaunchedEffect(Unit) {
-        val diaSemana = SimpleDateFormat("EEEE", Locale("es", "ES")).format(Date()) // Ej: "Lunes"
-        val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    // Verificar si el usuario ya subió su foto hoy
+    LaunchedEffect(emailRecibido) {
+        val hoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
-        dbFirebase.collection("usuario").document(emailRecibido).get().addOnSuccessListener { doc ->
-            val horarios = doc.get("horarios") as? Map<String, String>
-            val horarioHoy = horarios?.get(diaSemana) // Ej: "17:00 - 19:00"
-
-            if (horarioHoy != null && horarioHoy != "No entrena") {
-                val partes = horarioHoy.split(" - ")
-                if (partes.size == 2) {
-                    val inicio = partes[0]
-                    val fin = partes[1]
-                    puedeSubirFoto = horaActual >= inicio && horaActual <= fin
-                }
+        // Escuchamos el documento específico que se crea al subir la foto
+        dbFirebase.collection("fotosDiarias")
+            .document(hoy)
+            .collection("fotos")
+            .document(emailRecibido) // El documento tiene el nombre del email
+            .addSnapshotListener { snapshot, _ ->
+                // Si el documento existe, es que ya subió foto hoy
+                yaSubioFotoHoy = snapshot != null && snapshot.exists()
             }
-        }
     }
 
-    // 2. Cargar fotos diarias desde la subcolección del día de hoy
+    LaunchedEffect(idUsuario) {
+        if (idUsuario.isNotEmpty()) {
+            val localeEs = Locale("es", "ES")
+            val calendario = Calendar.getInstance()
+            val nombreDiaHoy = SimpleDateFormat("EEEE", localeEs).format(calendario.time)
+                .replaceFirstChar { it.uppercase() }
+            val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(calendario.time)
+
+            dbFirebase.collection("usuario").document(idUsuario).get()
+                .addOnSuccessListener { doc ->
+                    val horarios = doc.get("horarios") as? Map<String, String>
+                    val horarioHoy = horarios?.get(nombreDiaHoy)
+
+                    if (horarioHoy != null && horarioHoy != "No entrena" && horarioHoy != "00:00 - 00:00") {
+                        val partes = horarioHoy.split(" - ")
+                        if (partes.size == 2) {
+                            val inicio = partes[0].trim()
+                            val fin = partes[1].trim()
+                            // Solo permitimos subir si está en hora
+                            puedeSubirFoto = horaActual >= inicio && horaActual <= fin
+                        }
+                    }
+                }
+        }
+    }
+    // Lógica para saber si el usuario está en su horario de entrenamiento
+    LaunchedEffect(Unit) {
+        // 1. Forzar Localización en Español para el nombre del día
+        val localeEs = Locale("es", "ES")
+        val calendario = Calendar.getInstance()
+
+        // Obtenemos el día y lo ponemos en formato "Lunes", "Martes"...
+        val nombreDiaHoy = SimpleDateFormat("EEEE", localeEs).format(calendario.time)
+            .replaceFirstChar { it.uppercase() }
+
+        // 2. Formato de hora actual en 24h (siempre con dos dígitos: 09:05)
+        val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(calendario.time)
+
+        val idEncontrado= FirebaseTemplate.obtenerIdConEmail(emailRecibido)
+
+        if (idEncontrado != null){
+            //Toast.makeText(context, "EL USUARIO SI SE HA ENCONTRADO", Toast.LENGTH_SHORT).show()
+            dbFirebase.collection("usuario").document(idEncontrado).get()
+                .addOnSuccessListener { doc ->
+                    val horarios = doc.get("horarios") as? Map<String, String>
+                    val horarioHoy = horarios?.get(nombreDiaHoy)
+                    Toast.makeText(context, nombreDiaHoy.toString(), Toast.LENGTH_SHORT).show()
+
+                    if (horarioHoy != null && horarioHoy != "No entrena" && horarioHoy != "00:00 - 00:00") {
+                        try {
+                            val partes = horarioHoy.split(" - ")
+                            if (partes.size == 2) {
+                                val inicio = partes[0].trim()
+                                val fin = partes[1].trim()
+
+                                // Comparación de strings: "18:00" >= "17:00" && "18:00" <= "19:00"
+                                puedeSubirFoto = horaActual >= inicio && horaActual <= fin
+
+                                Log.d("Horario", "Hoy: $nombreDiaHoy, Hora: $horaActual, Rango: $inicio a $fin. ¿Puede? $puedeSubirFoto")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("Horario", "Error al parsear el horario: ${e.message}")
+                        }
+                    }
+                }
+        }
+
+    }
+
+    // Cargar fotos diarias desde la subcolección del día de hoy
     LaunchedEffect(tabSeleccionada) {
         if (tabSeleccionada == 0) {
             val hoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -171,7 +237,7 @@ fun Explorar(navController: NavController, emailRecibido: String){
                     title = { Text("EXPLORAR", fontWeight = FontWeight.ExtraBold, color = Color.White) },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = PurpleDark)
                 )
-                // Selector de pestañas (Tabs)
+                // Selector de pestañas
                 TabRow(
                     selectedTabIndex = tabSeleccionada,
                     containerColor = PurpleDark,
@@ -186,12 +252,14 @@ fun Explorar(navController: NavController, emailRecibido: String){
             }
         },
         floatingActionButton = {
-            // Si está en DIARIO y en horario, o si está en CONTENIDO (siempre)
-            if ((tabSeleccionada == 0 && puedeSubirFoto) || tabSeleccionada == 1) {
+            val mostrarBotonDiario = tabSeleccionada == 0 && puedeSubirFoto && !yaSubioFotoHoy
+            val mostrarBotonContenido = tabSeleccionada == 1
+
+            if (mostrarBotonDiario || mostrarBotonContenido) {
                 ExtendedFloatingActionButton(
                     onClick = {
                         val destino = if (tabSeleccionada == 0) "DIARIO" else "CONTENIDO"
-                        navController.navigate(route = AppScreens.CamaraMensajes.route + "/$emailRecibido/$destino")
+                        navController.navigate("CamaraMensajes/${emailRecibido}/$destino")
                     },
                     containerColor = AmberGold,
                     contentColor = PurpleDark,
@@ -315,7 +383,7 @@ fun Explorar(navController: NavController, emailRecibido: String){
                         }
                     }
                     else {
-                        // SECCIÓN CONTENIDO (Aquí iría tu feed normal)
+                        // SECCIÓN CONTENIDO
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("Contenido de la comunidad", color = PurpleDark)
                         }
@@ -434,7 +502,7 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
         .background(Color.White)
         .padding(bottom = 12.dp)) {
 
-        // --- CABECERA: Avatar y Nick ---
+        // Cabeza de la publicacion
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -451,11 +519,11 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
                 contentScale = ContentScale.Crop
             )
             Spacer(Modifier.width(10.dp))
-            Text(text = autorNick, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(text = autorNick, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
             Spacer(Modifier.weight(1f))
         }
 
-        // --- CONTENIDO: Imagen o Vídeo ---
+        // Imagen o video
         val mediaUrl = post["mediaUrl"] as? String ?: ""
         val esVideo = post["tipo"] == "video"
 
@@ -464,7 +532,7 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
             .height(400.dp)) {
 
             if (esVideo && mediaUrl.isNotEmpty()) {
-                // --- REPRODUCTOR DE VÍDEO REAL ---
+                // Reproductor del video
                 val exoPlayer = remember {
                     androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
                         setMediaItem(androidx.media3.common.MediaItem.fromUri(mediaUrl))
@@ -474,7 +542,7 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
                     }
                 }
 
-                // Liberar el reproductor cuando el PostCard sale de la pantalla
+                // Si el video no esta dentro de la pantalla no se carga
                 DisposableEffect(mediaUrl) {
                     onDispose { exoPlayer.release() }
                 }
@@ -490,7 +558,7 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // --- VISOR DE IMAGEN ---
+                // Vista de la imagen
                 AsyncImage(
                     model = mediaUrl,
                     contentDescription = null,
@@ -500,20 +568,20 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
             }
         }
 
-        // --- ACCIONES: Like, Comentar, Compartir ---
+        // Botones debajo de la publicacion
         Row(modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Icon(Lucide.Heart, null, modifier = Modifier.size(28.dp))
+            Icon(Lucide.Heart, null, modifier = Modifier.size(28.dp), tint = Color.Black)
             Spacer(Modifier.width(16.dp))
-            Icon(Lucide.MessageCircle, null, modifier = Modifier.size(28.dp))
+            Icon(Lucide.MessageCircle, null, modifier = Modifier.size(28.dp), tint = Color.Black)
             Spacer(Modifier.width(16.dp))
-            Icon(Lucide.Send, null, modifier = Modifier.size(28.dp))
+            Icon(Lucide.Send, null, modifier = Modifier.size(28.dp), tint = Color.Black)
             Spacer(Modifier.weight(1f))
-            Icon(Lucide.Bookmark, null, modifier = Modifier.size(28.dp))
+            Icon(Lucide.Bookmark, null, modifier = Modifier.size(28.dp), tint = Color.Black)
         }
 
-        // --- PIE: Comentario ---
+        // Comentario añadido al video
         Column(modifier = Modifier.padding(horizontal = 12.dp)) {
             val comentario = post["comentario"] as? String ?: ""
             if (comentario.isNotEmpty()) {

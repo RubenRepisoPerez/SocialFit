@@ -1,7 +1,9 @@
 package com.example.socialfit.screens
 
+import android.content.Context
 import android.net.Uri
 import android.os.Looper
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.animation.core.copy
@@ -59,6 +61,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.storage
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,7 +167,8 @@ fun ImagenEnviar(navController: NavController, emailLocal: String, emailVisita: 
                     color = Color.Black.copy(alpha = 0.7f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier
+                            .padding(16.dp)
                             .navigationBarsPadding()
                             .imePadding(),
                         verticalAlignment = Alignment.CenterVertically
@@ -193,7 +198,7 @@ fun ImagenEnviar(navController: NavController, emailLocal: String, emailVisita: 
                             IconButton(
                                 onClick = {
                                     subiendo = true
-                                    ejecutarSubida(decodedUri, emailLocal, emailVisita, comentario, esVideo) {
+                                    ejecutarSubida(context,decodedUri, emailLocal, emailVisita, comentario, esVideo) {
                                         // SI ES DIARIO, VOLVEMOS A EXPLORAR, SI NO, AL CHAT
                                         if (emailVisita == "DIARIO" || emailVisita == "CONTENIDO") {
                                             navController.navigate(AppScreens.Explorar.route + "/$emailLocal") {
@@ -208,7 +213,9 @@ fun ImagenEnviar(navController: NavController, emailLocal: String, emailVisita: 
                                         }
                                     }
                                 },
-                                modifier = Modifier.size(48.dp).background(AmberGold, CircleShape)
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(AmberGold, CircleShape)
                             ) {
                                 Icon(Lucide.Send, contentDescription = "Enviar", tint = PurpleDark)
                             }
@@ -220,83 +227,108 @@ fun ImagenEnviar(navController: NavController, emailLocal: String, emailVisita: 
     }
 }
 
-private fun ejecutarSubida(uri: Uri, emisor: String, receptor: String, texto: String, esVideo: Boolean, onComplete: () -> Unit) {
+private fun ejecutarSubida(
+    context: Context,
+    uriOriginal: Uri, // Esta ya será file://... gracias al cambio anterior
+    emisor: String,
+    receptor: String,texto: String,
+    esVideo: Boolean,
+    onComplete: () -> Unit
+) {
     val db = Firebase.firestore
     val storageRef = Firebase.storage.reference
 
-    // 1. Determinar carpeta y ID de chat/diario
-    val folder = if (receptor == "DIARIO") "diario" else "chat_media"
-    val subFolder = if (receptor == "DIARIO") emisor else (if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor")
+    // Ya no usamos obtenerUriSegura aquí porque la recibimos segura desde la pantalla anterior
+    val uriSegura = uriOriginal
 
+    // Determinar ruta en Storage
+    val carpeta = when (receptor) {
+        "DIARIO" -> "diario"
+        "CONTENIDO" -> "publicaciones"
+        else -> "chats"
+    }
     val extension = if (esVideo) "mp4" else "jpg"
-    val fileName = "$folder/$subFolder/${System.currentTimeMillis()}.$extension"
+    val fileName = "$carpeta/$emisor/${System.currentTimeMillis()}.$extension"
     val fileRef = storageRef.child(fileName)
 
-    fileRef.putFile(uri).addOnSuccessListener {
-        fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
-            val momento = Timestamp.now()
-            val urlDescarga = downloadUri.toString()
+    // Subida
+    fileRef.putFile(uriSegura)
+        .addOnSuccessListener {
+            fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                val urlDescarga = downloadUri.toString()
+                val momento = com.google.firebase.Timestamp.now()
 
-            if (receptor == "DIARIO") {
-                // --- LÓGICA DE FOTO DEL DÍA (Nueva Estructura) ---
-                val hoy = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                when (receptor) {
+                    "DIARIO" -> {
+                        val hoy = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                        val datos = hashMapOf(
+                            "autorEmail" to emisor,
+                            "fotoUrl" to urlDescarga,
+                            "comentario" to texto,
+                            "timestamp" to momento,
+                            "esVideo" to esVideo
+                        )
+                        db.collection("fotosDiarias").document(hoy)
+                            .collection("fotos").document(emisor)
+                            .set(datos).addOnSuccessListener { onComplete() }
+                    }
 
-                val datosFotoDiaria = hashMapOf(
-                    "autorEmail" to emisor,
-                    "fotoUrl" to urlDescarga,
-                    "comentario" to texto,
-                    "timestamp" to momento,
-                    "esVideo" to esVideo,
-                    "fecha" to hoy
-                )
+                    "CONTENIDO" -> {
+                        val datos = hashMapOf(
+                            "autorEmail" to emisor,
+                            "mediaUrl" to urlDescarga,
+                            "comentario" to texto,
+                            "timestamp" to momento,
+                            "tipo" to if (esVideo) "video" else "imagen",
+                            "likes" to emptyMap<String, Boolean>(),
+                            "totalLikes" to 0
+                        )
+                        db.collection("publicaciones").add(datos).addOnSuccessListener { onComplete() }
+                    }
 
-                // Guardamos en: fotosDiarias (Col) -> Fecha (Doc) -> fotos (SubCol) -> Usuario (Doc)
-                db.collection("fotosDiarias")
-                    .document(hoy)
-                    .collection("fotos")
-                    .document(emisor) // El documento es el email del usuario para que solo haya 1 por día
-                    .set(datosFotoDiaria)
-                    .addOnSuccessListener { onComplete() }
+                    else -> {
+                        val chatId = if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor"
+                        val mensaje = hashMapOf(
+                            "emisor" to emisor,
+                            "contenido" to texto,
+                            "momento" to momento,
+                            if (esVideo) "videoUrl" to urlDescarga else "imagenUrl" to urlDescarga
+                        )
+                        db.collection("chats").document(chatId).collection("mensajes").add(mensaje)
 
-            }
-            else if (receptor == "CONTENIDO") {
-                // --- LÓGICA DE PUBLICACIÓN GLOBAL ---
-                val datosPost = hashMapOf(
-                    "autorEmail" to emisor,
-                    "mediaUrl" to urlDescarga,
-                    "comentario" to texto,
-                    "timestamp" to momento,
-                    "tipo" to if (esVideo) "video" else "imagen",
-                    "likes" to emptyMap<String, Boolean>(), // Para gestionar quién da like
-                    "totalLikes" to 0
-                )
-
-                db.collection("publicaciones")
-                    .add(datosPost)
-                    .addOnSuccessListener { onComplete() }
-            } else {
-                // --- LÓGICA DE CHAT PRIVADO (Existente) ---
-                val chatId = if (emisor < receptor) "${emisor}_$receptor" else "${receptor}_$emisor"
-                val mensaje = hashMapOf(
-                    "emisor" to emisor,
-                    "contenido" to texto,
-                    "momento" to momento,
-                    if (esVideo) "videoUrl" to urlDescarga else "imagenUrl" to urlDescarga
-                )
-
-                db.collection("chats").document(chatId).collection("mensajes").add(mensaje)
-
-                val prefijo = if (esVideo) "🎥 Vídeo" else "📷 Imagen"
-                val textoFinal = if (texto.isNotEmpty()) "$prefijo: $texto" else prefijo
-
-                val actualizaciones = hashMapOf(
-                    "ultimoMensaje" to textoFinal,
-                    "ultimoMomento" to momento,
-                    "noLeidos.$receptor" to FieldValue.increment(1)
-                )
-                db.collection("chats").document(chatId).set(actualizaciones, SetOptions.merge())
-                onComplete()
+                        val prefijo = if (esVideo) "🎥 Vídeo" else "📷 Imagen"
+                        val actualizaciones = hashMapOf(
+                            "ultimoMensaje" to if (texto.isNotEmpty()) "$prefijo: $texto" else prefijo,
+                            "ultimoMomento" to momento,
+                            "noLeidos.$receptor" to com.google.firebase.firestore.FieldValue.increment(1)
+                        )
+                        db.collection("chats").document(chatId).set(actualizaciones, com.google.firebase.firestore.SetOptions.merge())
+                        onComplete()
+                    }
+                }
             }
         }
+        .addOnFailureListener { e ->
+            Log.e("FirebaseUpload", "Error al subir: ${e.message}")
+        }
+}
+
+private fun obtenerUriSegura(context: Context, uriOriginal: Uri): Uri {
+    return try {
+        // Abrimos el stream de la galería
+        val inputStream = context.contentResolver.openInputStream(uriOriginal)
+        // Creamos un archivo temporal en el caché de la propia app
+        val tempFile = File(context.cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
+
+        inputStream?.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        // Devolvemos la URI del archivo local (file://...)
+        Uri.fromFile(tempFile)
+    } catch (e: Exception) {
+        Log.e("ErrorUri", "Error al crear copia segura: ${e.message}")
+        uriOriginal // Si falla, devolvemos la original (aunque probablemente de error después)
     }
 }

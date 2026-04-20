@@ -870,10 +870,10 @@ fun Perfil(navController: NavController, emailRecibido: String){
                     val diasMap = listOf(
                         "L" to "Lunes",
                         "M" to "Martes",
-                        "X" to "Miercoles",
+                        "X" to "Miércoles",
                         "J" to "Jueves",
                         "V" to "Viernes",
-                        "S" to "Sabado",
+                        "S" to "Sábado",
                         "D" to "Domingo"
                     )
 
