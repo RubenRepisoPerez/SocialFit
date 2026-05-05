@@ -93,4 +93,5 @@ dependencies {
     implementation("androidx.camera:camera-video:1.3.4")
     implementation("androidx.media3:media3-exoplayer:1.2.0")
     implementation("androidx.media3:media3-ui:1.2.0")
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1")
 }

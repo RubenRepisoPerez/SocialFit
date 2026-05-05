@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -189,9 +191,11 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
         bottomBar = {
             NavigationBar(modifier = Modifier.height(90.dp),
                 containerColor = PurpleDark,
-                contentColor = Color.White
+                contentColor = Color.White,
+                windowInsets = WindowInsets(0, 0, 0, 0)
             ) {
                 NavigationBarItem(
+                    modifier = Modifier.offset(y = (-12).dp),
                     selected = false,
                     onClick = {
                         navController.navigate(route = AppScreens.Explorar.route + "/" + emailRecibido)
@@ -201,7 +205,6 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                             Lucide.Dumbbell, contentDescription = "Ir a explorar"
                         )
                     },
-                    label = { Text("Explorar") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = AmberGold,
                         selectedTextColor = AmberGold,
@@ -211,6 +214,7 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                     )
                 )
                 NavigationBarItem(
+                    modifier = Modifier.offset(y = (-12).dp),
                     selected = true,
                     onClick = {
                         //navController.navigate(route = AppScreens.Mensajes.route)
@@ -222,7 +226,6 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                             tint = if (true) PurpleDark else AmberGold
                         )
                     },
-                    label = { Text("Mensajes") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = PurpleDark,
                         selectedTextColor = AmberGold,
@@ -232,6 +235,7 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                     )
                 )
                 NavigationBarItem(
+                    modifier = Modifier.offset(y = (-12).dp),
                     selected = false,
                     onClick = {
                         navController.navigate(route = AppScreens.Buscar.route + "/" + emailRecibido)
@@ -242,7 +246,6 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                             contentDescription = "Ir a buscar",
                         )
                     },
-                    label = { Text("Buscar") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = AmberGold,
                         selectedTextColor = AmberGold,
@@ -252,6 +255,7 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                     )
                 )
                 NavigationBarItem(
+                    modifier = Modifier.offset(y = (-12).dp),
                     selected = false,
                     onClick = {
                         navController.navigate(route = AppScreens.Perfil.route + "/" + emailRecibido)
@@ -262,7 +266,6 @@ fun BandejaMensajes(navController: NavController, emailRecibido: String){
                             contentDescription = "Perfil",
                         )
                     },
-                    label = { Text("Perfil") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = AmberGold,
                         selectedTextColor = AmberGold,
