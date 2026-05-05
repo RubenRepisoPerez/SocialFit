@@ -39,6 +39,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,6 +47,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -55,8 +58,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.composables.icons.lucide.*
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import java.text.SimpleDateFormat
@@ -379,7 +387,7 @@ fun Explorar(navController: NavController, emailRecibido: String){
                     else if (tabSeleccionada == 1) {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(postsComunidad) { post ->
-                                PostCard(post, emailRecibido)
+                                PostCard(post, emailRecibido, idUsuario, navController)
                             }
                         }
                     }
@@ -480,21 +488,83 @@ fun CardDiario(datos: Map<String, Any>) {
 }
 
 @Composable
-fun PostCard(post: Map<String, Any>, emailLocal: String) {
+fun PostCard(post: Map<String, Any>, emailLocal: String, idUsuario: String, navController: NavController) {
     val db = Firebase.firestore
     val context = LocalContext.current
-    var autorNick by remember { mutableStateOf("...") }
-    var autorFoto by remember { mutableStateOf("") }
-    val autorEmail = post["autorEmail"] as? String ?: ""
     val idDoc = post["idDoc"] as? String ?: ""
 
-    // Cargar datos del autor
-    LaunchedEffect(autorEmail) {
+    // --- ESTADOS ---
+    var autorNick by remember { mutableStateOf("...") }
+    var autorFoto by remember { mutableStateOf("") }
+    var AutorEmail by remember { mutableStateOf("")}
+
+    // Usamos el idDoc como clave para que los estados no se mezclen al hacer scroll
+    var isLiked by remember(idDoc) { mutableStateOf(false) }
+    var totalLikes by remember(idDoc) { mutableStateOf((post["totalLikes"] as? Long)?.toInt() ?: 0) }
+    var isSaved by remember(idDoc) { mutableStateOf(false) }
+
+    // --- CARGA Y PERSISTENCIA ---
+    LaunchedEffect(idDoc) {
+        // 1. Cargar datos del autor
+        val autorEmail = post["autorEmail"] as? String ?: ""
         db.collection("usuario").whereEqualTo("email", autorEmail).get().addOnSuccessListener {
             if (!it.isEmpty) {
                 autorNick = it.documents[0].getString("nick") ?: ""
                 autorFoto = it.documents[0].getString("fotoPerfil") ?: ""
+                AutorEmail = it.documents[0].getString("email") ?: ""
             }
+        }
+
+        // 2. Fuente de verdad: Comprobar FAVORITOS
+        db.collection("usuario").document(idUsuario).collection("guardados")
+            .document(idDoc).get().addOnSuccessListener { isSaved = it.exists() }
+
+        // 3. Fuente de verdad: Comprobar LIKE PROPIO
+        db.collection("usuario").document(idUsuario).collection("likes_dados")
+            .document(idDoc).get().addOnSuccessListener { isLiked = it.exists() }
+
+        // 4. Escuchar contador de likes global en tiempo real
+        db.collection("publicaciones").document(idDoc).addSnapshotListener { snapshot, _ ->
+            snapshot?.let {
+                totalLikes = (it.getLong("totalLikes"))?.toInt() ?: 0
+            }
+        }
+    }
+
+    // --- ACCIONES ---
+    fun toggleLike() {
+        val postRef = db.collection("publicaciones").document(idDoc)
+        val userLikeRef = db.collection("usuario").document(idUsuario).collection("likes_dados").document(idDoc)
+
+        if (isLiked) {
+            isLiked = false
+            totalLikes -= 1
+            // Borramos de nuestra lista y restamos del post
+            userLikeRef.delete()
+            postRef.update(
+                "likes.$emailLocal", FieldValue.delete(),
+                "totalLikes", FieldValue.increment(-1)
+            )
+        } else {
+            isLiked = true
+            totalLikes += 1
+            // Añadimos a nuestra lista y sumamos al post
+            userLikeRef.set(mapOf("idDoc" to idDoc))
+            postRef.update(
+                "likes.$emailLocal", true,
+                "totalLikes", FieldValue.increment(1)
+            )
+        }
+    }
+
+    fun toggleSave() {
+        val saveRef = db.collection("usuario").document(idUsuario).collection("guardados").document(idDoc)
+        if (isSaved) {
+            isSaved = false
+            saveRef.delete()
+        } else {
+            isSaved = true
+            saveRef.set(post)
         }
     }
 
@@ -503,63 +573,49 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
         .background(Color.White)
         .padding(bottom = 12.dp)) {
 
-        // Cabeza de la publicacion
+        // Cabecera
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp).clickable{
+                navController.navigate(AppScreens.PerfilAgeno.route + "/" + emailLocal  + "/" + AutorEmail)},
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = autorFoto,
                 contentDescription = null,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray),
+                modifier = Modifier.size(38.dp).clip(CircleShape).background(Color.LightGray),
                 contentScale = ContentScale.Crop
             )
             Spacer(Modifier.width(10.dp))
             Text(text = autorNick, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
-            Spacer(Modifier.weight(1f))
         }
 
-        // Imagen o video
+        // Imagen o Video
         val mediaUrl = post["mediaUrl"] as? String ?: ""
         val esVideo = post["tipo"] == "video"
 
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp)) {
-
+        Box(modifier = Modifier.fillMaxWidth().height(400.dp).background(Color.Black)) {
             if (esVideo && mediaUrl.isNotEmpty()) {
-                // Reproductor del video
                 val exoPlayer = remember {
-                    androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
-                        setMediaItem(androidx.media3.common.MediaItem.fromUri(mediaUrl))
+                    ExoPlayer.Builder(context).build().apply {
+                        setMediaItem(MediaItem.fromUri(mediaUrl))
                         prepare()
-                        playWhenReady = false // No empieza solo para no saturar
-                        repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+                        repeatMode = Player.REPEAT_MODE_ONE
                     }
                 }
-
-                // Si el video no esta dentro de la pantalla no se carga
-                DisposableEffect(mediaUrl) {
+                DisposableEffect(idDoc) {
                     onDispose { exoPlayer.release() }
                 }
-
                 AndroidView(
                     factory = { ctx ->
-                        androidx.media3.ui.PlayerView(ctx).apply {
+                        PlayerView(ctx).apply {
                             player = exoPlayer
-                            useController = true // Permite pausar/reproducir
+                            useController = true
                             setBackgroundColor(android.graphics.Color.BLACK)
                         }
                     },
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // Vista de la imagen
                 AsyncImage(
                     model = mediaUrl,
                     contentDescription = null,
@@ -569,20 +625,42 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
             }
         }
 
-        // Botones debajo de la publicacion
-        Row(modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Icon(Lucide.Heart, null, modifier = Modifier.size(28.dp), tint = Color.Black)
+        // Botones
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // CORAZÓN (LIKE)
+            Icon(
+                imageVector = if (isLiked) Icons.Filled.Favorite else Lucide.Heart,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp).clickable { toggleLike() },
+                tint = if (isLiked) Color.Red else Color.Black
+            )
+
+            if (totalLikes > 0) {
+                Text(
+                    text = totalLikes.toString(),
+                    modifier = Modifier.padding(start = 6.dp),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+
             Spacer(Modifier.width(16.dp))
-            Icon(Lucide.MessageCircle, null, modifier = Modifier.size(28.dp), tint = Color.Black)
-            Spacer(Modifier.width(16.dp))
-            Icon(Lucide.Send, null, modifier = Modifier.size(28.dp), tint = Color.Black)
+            Icon(Lucide.MessageCircle, null, Modifier.size(28.dp), tint = Color.Black)
             Spacer(Modifier.weight(1f))
-            Icon(Lucide.Bookmark, null, modifier = Modifier.size(28.dp), tint = Color.Black)
+
+            // GUARDAR
+            Icon(
+                imageVector = if (isSaved) Lucide.BookmarkCheck else Lucide.Bookmark,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp).clickable { toggleSave() },
+                tint = if (isSaved) Color(0xFFFFC107) else Color.Black
+            )
         }
 
-        // Comentario añadido al video
+        // Pie
         Column(modifier = Modifier.padding(horizontal = 12.dp)) {
             val comentario = post["comentario"] as? String ?: ""
             if (comentario.isNotEmpty()) {
@@ -596,7 +674,7 @@ fun PostCard(post: Map<String, Any>, emailLocal: String) {
                 text = "Ver los comentarios...",
                 color = Color.Gray,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp).clickable { /* Navegar a comentarios */ }
             )
         }
     }

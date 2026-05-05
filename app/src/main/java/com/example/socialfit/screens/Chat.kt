@@ -11,15 +11,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -174,6 +179,7 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
@@ -223,11 +229,11 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = PurpleDark)
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = innerPadding.calculateTopPadding())
                 .background(BackgroundGrayBlue)
         ) {
             LazyColumn(
@@ -310,8 +316,9 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
             }
 
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = BackgroundGrayBlue
+                modifier = Modifier.fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+                color = BackgroundGrayBlue,
             ) {
                 Row(
                     modifier = Modifier
