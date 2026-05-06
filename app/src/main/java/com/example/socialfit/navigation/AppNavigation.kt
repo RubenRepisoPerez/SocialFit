@@ -22,6 +22,7 @@ import com.example.socialfit.screens.BandejaMensajes
 import com.example.socialfit.screens.Buscar
 import com.example.socialfit.screens.CamaraMensajes
 import com.example.socialfit.screens.Chat
+import com.example.socialfit.screens.Comentarios
 import com.example.socialfit.screens.Explorar
 import com.example.socialfit.screens.ImagenEnviar
 import com.example.socialfit.screens.InicioSesion
@@ -190,6 +191,18 @@ fun AppNavigation(){
 
                 CamaraMensajes(navController, backStackEntry.arguments?.getString("emailLocal").toString(),
                     backStackEntry.arguments?.getString("emailVisita").toString())
+            }
+
+            composable(
+                route = AppScreens.Comentarios.route + "/{idDoc}/{emailLocal}",
+                arguments = listOf(
+                    navArgument("idDoc") { type = NavType.StringType },
+                    navArgument("emailLocal") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val idDoc = backStackEntry.arguments?.getString("idDoc") ?: ""
+                val emailLocal = backStackEntry.arguments?.getString("emailLocal") ?: ""
+                Comentarios(navController, idDoc, emailLocal)
             }
         }
     }

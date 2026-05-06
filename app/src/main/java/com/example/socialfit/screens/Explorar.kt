@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -87,6 +88,10 @@ fun Explorar(navController: NavController, emailRecibido: String){
     val context = LocalContext.current
 
     var idUsuario by remember { mutableStateOf("") }
+    val lazyListState = rememberLazyListState() // Para controlar la posición del feed
+    var vistosIds by remember { mutableStateOf<Set<String>?>(null) } // IDs de posts ya vistos
+    var yaScrolleadoContenido by remember { mutableStateOf(false) }
+
 
     LaunchedEffect(Unit) {
         val idEncontrado = FirebaseTemplate.obtenerIdConEmail(emailRecibido)
@@ -204,7 +209,7 @@ fun Explorar(navController: NavController, emailRecibido: String){
     }
 
     // Cargar fotos diarias desde la subcolección del día de hoy
-    LaunchedEffect(tabSeleccionada) {
+    LaunchedEffect(tabSeleccionada, emailRecibido) {
         if (tabSeleccionada == 0) {
             val hoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
@@ -212,6 +217,8 @@ fun Explorar(navController: NavController, emailRecibido: String){
             dbFirebase.collection("fotosDiarias")
                 .document(hoy)
                 .collection("fotos")
+                .whereNotEqualTo("autorEmail", emailRecibido) // Filtrar posts propios
+                .orderBy("autorEmail") // Requerido por Firestore al usar whereNotEqualTo
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener { snap, error ->
                     if (error != null) {
@@ -223,9 +230,11 @@ fun Explorar(navController: NavController, emailRecibido: String){
         }
     }
 
-    LaunchedEffect(tabSeleccionada) {
+    LaunchedEffect(tabSeleccionada, emailRecibido) {
         if (tabSeleccionada == 1) {
             dbFirebase.collection("publicaciones")
+                .whereNotEqualTo("autorEmail", emailRecibido) // Filtrar posts propios
+                .orderBy("autorEmail") // Requerido por Firestore al usar whereNotEqualTo
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener { snap, _ ->
                     postsComunidad = snap?.documents?.mapNotNull { doc ->
@@ -648,7 +657,11 @@ fun PostCard(post: Map<String, Any>, emailLocal: String, idUsuario: String, navC
             }
 
             Spacer(Modifier.width(16.dp))
-            Icon(Lucide.MessageCircle, null, Modifier.size(28.dp), tint = Color.Black)
+            Icon(Lucide.MessageCircle, null, Modifier.size(28.dp).clickable {
+                navController.navigate(AppScreens.Comentarios.route + "/$idDoc/$emailLocal")
+            }, tint = Color.Black)
+            Spacer(Modifier.width(16.dp))
+            Icon(Lucide.Send, null, modifier = Modifier.size(28.dp), tint = Color.Black)
             Spacer(Modifier.weight(1f))
 
             // GUARDAR
@@ -674,7 +687,9 @@ fun PostCard(post: Map<String, Any>, emailLocal: String, idUsuario: String, navC
                 text = "Ver los comentarios...",
                 color = Color.Gray,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(top = 4.dp).clickable { /* Navegar a comentarios */ }
+                modifier = Modifier.padding(top = 4.dp).clickable {
+                    navController.navigate(AppScreens.Comentarios.route + "/$idDoc/$emailLocal")
+                }
             )
         }
     }
