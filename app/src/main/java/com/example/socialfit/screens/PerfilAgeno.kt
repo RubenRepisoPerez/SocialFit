@@ -262,10 +262,11 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
                     Icon(
                         imageVector = if (yaLoSigue) Lucide.UserCheck else Lucide.UserPlus,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
+                        tint = if (yaLoSigue) PurpleDark else Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (yaLoSigue) "Siguiendo" else "Seguir")
+                    Text(if (yaLoSigue) "Siguiendo" else "Seguir", color = if (yaLoSigue) PurpleDark else Color.White)
                 }
 
                 Button(

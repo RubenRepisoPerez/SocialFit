@@ -39,8 +39,11 @@ fun Comentarios(navController: NavController, idDoc: String, emailLocal: String)
     var nuevoComentario by remember { mutableStateOf("") }
     var comentarios by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
 
-    val PurpleDark = Color(0xFF2D1B4E)
-    val AmberGold = Color(0xFFFFC107)
+    val PurpleDark = Color(0xFF2D1B4E)      // Primario (Barras, Botón Principal)
+    val PurpleMedium = Color(0xFF4A3175)    // Secundario (Bordes de inputs, Botones secundarios)
+    val AmberGold = Color(0xFFFFC107)       // (Iconos, Checkbox, RadioButtons, Errores)
+    val BackgroundGrayBlue = Color(0xFFDDE1E7) // Fondo de la pantalla
+    val SurfaceWhite = Color(0xFFFFFFFF)
 
     // Escuchar comentarios en tiempo real
     LaunchedEffect(idDoc) {
@@ -134,7 +137,8 @@ fun Comentarios(navController: NavController, idDoc: String, emailLocal: String)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(padding)
+                    .background(BackgroundGrayBlue),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -153,6 +157,11 @@ fun FilaComentario(comentario: Map<String, Any>) {
     val texto = comentario["texto"] as? String ?: ""
     var autorNick by remember { mutableStateOf("...") }
     var autorFoto by remember { mutableStateOf("") }
+    val PurpleDark = Color(0xFF2D1B4E)      // Primario (Barras, Botón Principal)
+    val PurpleMedium = Color(0xFF4A3175)    // Secundario (Bordes de inputs, Botones secundarios)
+    val AmberGold = Color(0xFFFFC107)       // (Iconos, Checkbox, RadioButtons, Errores)
+    val BackgroundGrayBlue = Color(0xFFDDE1E7) // Fondo de la pantalla
+    val SurfaceWhite = Color(0xFFFFFFFF)
 
     LaunchedEffect(autorEmail) {
         db.collection("usuario").whereEqualTo("email", autorEmail).get().addOnSuccessListener {
@@ -176,9 +185,9 @@ fun FilaComentario(comentario: Map<String, Any>) {
         Spacer(Modifier.width(12.dp))
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = autorNick, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = autorNick, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
                 Spacer(Modifier.width(8.dp))
-                // Podrías añadir tiempo relativo aquí
+                // añadir tiempo relativo aquí
             }
             Text(text = texto, fontSize = 14.sp, color = Color.Black)
         }

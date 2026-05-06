@@ -233,15 +233,16 @@ fun Explorar(navController: NavController, emailRecibido: String){
     LaunchedEffect(tabSeleccionada, emailRecibido) {
         if (tabSeleccionada == 1) {
             dbFirebase.collection("publicaciones")
-                .whereNotEqualTo("autorEmail", emailRecibido) // Filtrar posts propios
-                .orderBy("autorEmail") // Requerido por Firestore al usar whereNotEqualTo
+                //.whereNotEqualTo("autorEmail", emailRecibido) // Filtrar posts propios
+                //.orderBy("autorEmail") // Requerido por Firestore al usar whereNotEqualTo
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener { snap, _ ->
                     postsComunidad = snap?.documents?.mapNotNull { doc ->
                         val data = doc.data?.toMutableMap()
                         data?.set("idDoc", doc.id)
                         data
-                    } ?: emptyList()
+
+                    }?.filter { it["autorEmail"] != emailRecibido } ?: emptyList()
                 }
         }
     }
