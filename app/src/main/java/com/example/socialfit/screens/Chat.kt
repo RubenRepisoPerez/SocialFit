@@ -179,7 +179,6 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
@@ -233,7 +232,7 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
+                .padding(innerPadding)
                 .background(BackgroundGrayBlue)
         ) {
             LazyColumn(
@@ -316,15 +315,13 @@ fun Chat(navController: NavController, emailLocal: String, emailVisita: String) 
             }
 
             Surface(
-                modifier = Modifier.fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
-                color = BackgroundGrayBlue,
+                modifier = Modifier
+                    .fillMaxWidth(),
+                color = BackgroundGrayBlue
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(12.dp)
-                        .navigationBarsPadding()
-                        .imePadding(),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
