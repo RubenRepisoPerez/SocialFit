@@ -351,7 +351,7 @@ fun PerfilAgeno(navController: NavController, emailLocal: String, emailVisita: S
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    val diasMap = listOf("L" to "Lunes", "M" to "Martes", "X" to "Miercoles", "J" to "Jueves", "V" to "Viernes", "S" to "Sabado", "D" to "Domingo")
+                    val diasMap = listOf("L" to "Lunes", "M" to "Martes", "X" to "Miércoles", "J" to "Jueves", "V" to "Viernes", "S" to "Sábado", "D" to "Domingo")
                     diasMap.forEach { (letra, dia) ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),

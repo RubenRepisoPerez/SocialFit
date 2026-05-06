@@ -139,6 +139,19 @@ fun Explorar(navController: NavController, emailRecibido: String){
             }
     }
 
+    // ESCUCHAR LOS POSTS VISTOS DEL USUARIO
+    LaunchedEffect(idUsuario) {
+        if (idUsuario.isNotEmpty()) {
+            dbFirebase.collection("usuario").document(idUsuario)
+                .addSnapshotListener { snap, _ ->
+                    if (snap != null && snap.exists()) {
+                        val vistos = snap.get("vistos") as? List<String> ?: emptyList()
+                        vistosIds = vistos.toSet()
+                    }
+                }
+        }
+    }
+
     LaunchedEffect(idUsuario) {
         if (idUsuario.isNotEmpty()) {
             val localeEs = Locale("es", "ES")
@@ -235,7 +248,7 @@ fun Explorar(navController: NavController, emailRecibido: String){
             dbFirebase.collection("publicaciones")
                 //.whereNotEqualTo("autorEmail", emailRecibido) // Filtrar posts propios
                 //.orderBy("autorEmail") // Requerido por Firestore al usar whereNotEqualTo
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .orderBy("timestamp", Query.Direction.ASCENDING)
                 .addSnapshotListener { snap, _ ->
                     postsComunidad = snap?.documents?.mapNotNull { doc ->
                         val data = doc.data?.toMutableMap()
@@ -244,6 +257,29 @@ fun Explorar(navController: NavController, emailRecibido: String){
 
                     }?.filter { it["autorEmail"] != emailRecibido } ?: emptyList()
                 }
+        }
+    }
+
+    // REINICIAR EL SCROLL AL CAMBIAR DE PESTAÑA
+    LaunchedEffect(tabSeleccionada) {
+        if (tabSeleccionada != 1) {
+            yaScrolleadoContenido = false
+        }
+    }
+
+    // LÓGICA DE AUTO-SCROLL PARA CONTENIDO
+    LaunchedEffect(tabSeleccionada, postsComunidad, vistosIds) {
+        if (tabSeleccionada == 1 && postsComunidad.isNotEmpty() && vistosIds != null && !yaScrolleadoContenido) {
+            // Buscamos la primera publicación cuyo ID no esté en la lista de vistos
+            val primerNoVistoIndex = postsComunidad.indexOfFirst { (it["idDoc"] as String) !in vistosIds!! }
+
+            if (primerNoVistoIndex != -1) {
+                // Hay publicaciones sin ver: saltamos a la más antigua sin ver
+                lazyListState.scrollToItem(primerNoVistoIndex)
+            } else {
+                lazyListState.scrollToItem(postsComunidad.size - 1)
+            }
+            yaScrolleadoContenido = true // Marcamos que ya hicimos el salto
         }
     }
 
@@ -395,8 +431,23 @@ fun Explorar(navController: NavController, emailRecibido: String){
                         }
                     }
                     else if (tabSeleccionada == 1) {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                             items(postsComunidad) { post ->
+                                val idDoc = post["idDoc"] as? String ?: ""
+
+                                // Registrar como visto al aparecer en pantalla
+                                LaunchedEffect(idDoc) {
+                                    if (vistosIds != null && !vistosIds!!.contains(idDoc)) {
+                                        dbFirebase.collection("usuario").document(idUsuario).set(
+                                            mapOf("vistos" to FieldValue.arrayUnion(idDoc)),
+                                            com.google.firebase.firestore.SetOptions.merge()
+                                        )
+                                    }
+                                }
+
                                 PostCard(post, emailRecibido, idUsuario, navController)
                             }
                         }

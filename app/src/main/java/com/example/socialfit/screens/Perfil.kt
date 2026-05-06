@@ -230,7 +230,7 @@ fun Perfil(navController: NavController, emailRecibido: String){
 
     // Un mapa o estado para guardar los horarios de cada día
     val horariosDias = remember { mutableStateMapOf<String, String>().apply {
-        listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo").forEach {
+        listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo").forEach {
             put(it, "17:00 - 18:30") // Valor por defecto
         }
     }}
