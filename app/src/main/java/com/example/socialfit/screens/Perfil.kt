@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
@@ -339,6 +340,63 @@ fun Perfil(navController: NavController, emailRecibido: String){
         }
     }
 
+    // --- NUEVOS ESTADOS PARA LOS DIÁLOGOS DE SEGUIDORES/SIGUIENDO ---
+    var verDialogoSeguidores by remember { mutableStateOf(false) }
+    var verDialogoSiguiendo by remember { mutableStateOf(false) }
+    var listaDatosSeguidores by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var listaDatosSiguiendo by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+
+    // Cargar detalles de SEGUIDORES
+    LaunchedEffect(verDialogoSeguidores) {
+        if (verDialogoSeguidores) {
+            dbFirebase.collection("seguimientos")
+                .whereEqualTo("seguido", emailRecibido)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    val emailsSeguidores = snapshot.documents.mapNotNull { it.getString("seguidor") }
+                    if (emailsSeguidores.isNotEmpty()) {
+                        // Dividimos en bloques de 10 porque Firebase limita las consultas 'whereIn' a 10 items
+                        val chunks = emailsSeguidores.chunked(10)
+                        val usuariosTemporales = mutableListOf<Map<String, Any>>()
+                        chunks.forEach { chunk ->
+                            dbFirebase.collection("usuario").whereIn("email", chunk).get()
+                                .addOnSuccessListener { userSnap ->
+                                    usuariosTemporales.addAll(userSnap.documents.mapNotNull { it.data })
+                                    listaDatosSeguidores = usuariosTemporales.toList()
+                                }
+                        }
+                    } else {
+                        listaDatosSeguidores = emptyList()
+                    }
+                }
+        }
+    }
+
+    // Cargar detalles de SIGUIENDO
+    LaunchedEffect(verDialogoSiguiendo) {
+        if (verDialogoSiguiendo) {
+            dbFirebase.collection("seguimientos")
+                .whereEqualTo("seguidor", emailRecibido)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    val emailsSiguiendo = snapshot.documents.mapNotNull { it.getString("seguido") }
+                    if (emailsSiguiendo.isNotEmpty()) {
+                        val chunks = emailsSiguiendo.chunked(10)
+                        val usuariosTemporales = mutableListOf<Map<String, Any>>()
+                        chunks.forEach { chunk ->
+                            dbFirebase.collection("usuario").whereIn("email", chunk).get()
+                                .addOnSuccessListener { userSnap ->
+                                    usuariosTemporales.addAll(userSnap.documents.mapNotNull { it.data })
+                                    listaDatosSiguiendo = usuariosTemporales.toList()
+                                }
+                        }
+                    } else {
+                        listaDatosSiguiendo = emptyList()
+                    }
+                }
+        }
+    }
+
     Scaffold(
         // Fondo transparente para ver la imagen
         containerColor = BackgroundGrayBlue,
@@ -475,7 +533,8 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
-                    Modifier.padding(10.dp),
+                    Modifier.padding(10.dp)
+                        .clickable { verDialogoSeguidores = true },
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
@@ -496,7 +555,8 @@ fun Perfil(navController: NavController, emailRecibido: String){
                 Spacer(Modifier.width(150.dp))
 
                 Column(
-                    Modifier.padding(10.dp),
+                    Modifier.padding(10.dp)
+                        .clickable { verDialogoSiguiendo = true },
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
@@ -514,6 +574,26 @@ fun Perfil(navController: NavController, emailRecibido: String){
                     Text("Siguiendo", color = PurpleMedium)
                 }
 
+            }
+
+            if (verDialogoSeguidores) {
+                DialogListaUsuarios(
+                    titulo = "Seguidores",
+                    listaUsuarios = listaDatosSeguidores,
+                    onDismiss = { verDialogoSeguidores = false },
+                    navController = navController,
+                    emailLocal = emailRecibido
+                )
+            }
+
+            if (verDialogoSiguiendo) {
+                DialogListaUsuarios(
+                    titulo = "Siguiendo",
+                    listaUsuarios = listaDatosSiguiendo,
+                    onDismiss = { verDialogoSiguiendo = false },
+                    navController = navController,
+                    emailLocal = emailRecibido
+                )
             }
 
             Card(
@@ -1521,6 +1601,97 @@ fun seleccionHorario(
                 ) {
                     TextButton(onClick = onDismiss) { Text("Cancelar", color = Color.Gray) }
                     TextButton(onClick = onConfirm) { Text("Aceptar", color = Color.White) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DialogListaUsuarios(
+    titulo: String,
+    listaUsuarios: List<Map<String, Any>>,
+    onDismiss: () -> Unit,
+    navController: NavController,
+    emailLocal: String
+) {
+    val PurpleDark = Color(0xFF2D1B4E)
+    val PurpleMedium = Color(0xFF4A3175)
+    val AmberGold = Color(0xFFFFC107)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 500.dp) // Altura máxima para que sea scrolleable si hay muchos
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = PurpleMedium)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp).fillMaxWidth()
+            ) {
+                // Cabecera del diálogo
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(titulo, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    IconButton(onClick = onDismiss) {
+                        Icon(Lucide.X, "Cerrar", tint = Color.White)
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Lista
+                if (listaUsuarios.isEmpty()) {
+                    Text("No hay usuarios que mostrar.", color = Color.White)
+                } else {
+                    LazyColumn {
+                        items(listaUsuarios) { user ->
+                            val emailTarget = user["email"] as? String ?: ""
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        // Opcional: Si clickas en un usuario, te lleva a su perfil
+                                        onDismiss()
+                                        if (emailTarget != emailLocal) {
+                                            navController.navigate(AppScreens.PerfilAgeno.route + "/" + emailLocal + "/" + emailTarget)
+                                        }
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val fotoUrl = user["fotoPerfil"] as? String ?: ""
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.LightGray)
+                                ) {
+                                    if (fotoUrl.isNotEmpty()) {
+                                        AsyncImage(
+                                            model = fotoUrl,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(Lucide.User, null, tint = PurpleDark, modifier = Modifier.align(Alignment.Center))
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(user["nick"] as? String ?: "Usuario", fontWeight = FontWeight.Bold, color = AmberGold)
+                                    Text(user["nombre"] as? String ?: "", fontSize = 12.sp, color = Color.White)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
